@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GALSEN EBOOK – Librairie Numérique</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { DEFAULT: '#16a34a', light: '#22c55e', dark: '#15803d' },
+            accent:  { DEFAULT: '#ea580c', light: '#fb923c', dark: '#c2410c' },
+          },
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif'],
+            display: ['"Playfair Display"', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { scroll-behavior: smooth; }
+    body { font-family: 'Poppins', sans-serif; background: #f8fafc; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #16a34a; border-radius: 3px; }
+    .page { display: none; animation: fadeIn .3s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    .hero-bg { background: linear-gradient(135deg,#064e3b 0%,#065f46 40%,#15803d 70%,rgba(234,88,12,.13) 100%); }
+    .ebook-card { transition: transform .2s, box-shadow .2s; }
+    .ebook-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,.12); }
+    #notif { position:fixed; top:80px; right:16px; z-index:9999; transition:all .3s; transform:translateX(120%); }
+    #notif.show { transform:translateX(0); }
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; display:none; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    #cart-sidebar { position:fixed; top:0; right:-420px; height:100vh; width:min(400px,100vw); background:white; z-index:500; transition:right .3s ease; box-shadow:-8px 0 30px rgba(0,0,0,.15); }
+    #cart-sidebar.open { right:0; }
+    #cart-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:499; display:none; }
+    #cart-overlay.show { display:block; }
+    .nav-link::after { content:''; position:absolute; bottom:-2px; left:0; width:0; height:2px; background:#ea580c; transition:width .3s; }
+    .nav-link:hover::after,.nav-link.active::after { width:100%; }
+    .input-field { width:100%; padding:12px 16px; border:1px solid #e5e7eb; border-radius:12px; font-family:Poppins,sans-serif; font-size:14px; transition:all .2s; outline:none; }
+    .input-field:focus { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,.15); }
+    .stars { color:#f59e0b; }
+    .badge-new { background:linear-gradient(135deg,#ea580c,#f97316); }
+    .badge-hot { background:linear-gradient(135deg,#16a34a,#22c55e); }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6">
+    <div class="flex items-center justify-between h-16">
+      <button onclick="showPage('home')" class="flex items-center gap-2 group">
+        <div class="w-10 h-10 bg-gradient-to-br from-primary to-primary-dark rounded-xl flex items-center justify-center shadow-md group-hover:scale-105 transition">
+          <span class="text-white font-bold text-sm">GE</span>
+        </div>
+        <div class="hidden sm:block">
+          <span class="font-display text-xl font-bold text-gray-900">GALSEN</span>
+          <span class="font-display text-xl font-bold text-accent"> EBOOK</span>
+        </div>
+      </button>
+
+      <div class="hidden md:flex items-center gap-8">
+        <button onclick="showPage('home')" class="nav-link relative text-gray-700 hover:text-primary font-medium text-sm transition" id="nav-home">Accueil</button>
+        <button onclick="showPage('catalogue')" class="nav-link relative text-gray-700 hover:text-primary font-medium text-sm transition" id="nav-catalogue">Catalogue</button>
+        <button onclick="showPage('about')" class="nav-link relative text-gray-700 hover:text-primary font-medium text-sm transition" id="nav-about">À propos</button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="toggleSearch()" class="p-2 text-gray-600 hover:text-primary hover:bg-green-50 rounded-xl transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </button>
+        <button onclick="openCart()" class="relative p-2 text-gray-600 hover:text-primary hover:bg-green-50 rounded-xl transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-10H5.4m0 0L7 13m0 0l-1.5 6h11"/></svg>
+          <span id="cart-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-accent text-white text-xs rounded-full flex items-center justify-center font-bold">0</span>
+        </button>
+        <div id="auth-buttons" class="flex items-center gap-2">
+          <button onclick="showPage('login')" class="hidden sm:block text-sm font-medium text-gray-700 hover:text-primary transition">Connexion</button>
+          <button onclick="showPage('register')" class="bg-primary hover:bg-primary-dark text-white text-sm font-semibold px-4 py-2 rounded-xl transition">S'inscrire</button>
+        </div>
+        <div id="user-menu" class="hidden">
+          <div class="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-xl cursor-pointer relative" onclick="toggleDropdown()">
+            <div class="w-7 h-7 bg-primary rounded-full flex items-center justify-center">
+              <span class="text-white text-xs font-bold" id="user-avatar">U</span>
+            </div>
+            <span class="text-sm font-medium text-gray-700 hidden sm:block" id="user-name-nav">User</span>
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </div>
+          <div id="user-dropdown" class="hidden absolute top-16 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 w-48 z-50">
+            <button onclick="showPage('profile')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-primary">Mon profil</button>
+            <button onclick="showPage('my-ebooks')" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-primary">Ma bibliothèque</button>
+            <div id="admin-link" class="hidden"><hr class="my-1 border-gray-100"/><button onclick="showPage('admin')" class="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50">⚙️ Admin</button></div>
+            <hr class="my-1 border-gray-100"/>
+            <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50">Déconnexion</button>
+          </div>
+        </div>
+        <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-gray-600 hover:text-primary rounded-xl transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="search-bar" class="hidden pb-3">
+      <div class="relative">
+        <input type="text" id="search-input" placeholder="Rechercher un ebook, auteur, catégorie..." oninput="searchEbooks(this.value)"
+          class="input-field pl-10"/>
+        <svg class="absolute left-3 top-3.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden pb-3 border-t border-gray-100 pt-3 space-y-1">
+      <button onclick="showPage('home');toggleMobileMenu()" class="block w-full text-left px-2 py-2 text-gray-700 hover:text-primary text-sm">Accueil</button>
+      <button onclick="showPage('catalogue');toggleMobileMenu()" class="block w-full text-left px-2 py-2 text-gray-700 hover:text-primary text-sm">Catalogue</button>
+      <button onclick="showPage('login');toggleMobileMenu()" class="block w-full text-left px-2 py-2 text-gray-700 hover:text-primary text-sm">Connexion</button>
+      <button onclick="showPage('register');toggleMobileMenu()" class="block w-full text-left px-4 py-2 bg-primary text-white rounded-xl text-sm font-semibold">S'inscrire</button>
+    </div>
+  </div>
+</nav>
+
+<!-- NOTIFICATION -->
+<div id="notif" class="bg-primary text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm font-medium max-w-xs">
+  <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+  <span id="notif-text">OK</span>
+</div>
+
+<!-- CART OVERLAY + SIDEBAR -->
+<div id="cart-overlay" onclick="closeCart()"></div>
+<div id="cart-sidebar">
+  <div class="flex flex-col h-full">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 class="font-display text-xl font-bold text-gray-900">Mon Panier</h2>
+      <button onclick="closeCart()" class="p-2 hover:bg-gray-100 rounded-xl transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+    <div class="p-5 border-t border-gray-100 bg-gray-50">
+      <div class="flex justify-between items-center mb-4">
+        <span class="font-semibold text-gray-700">Total</span>
+        <span class="font-bold text-2xl text-primary" id="cart-total">0 FCFA</span>
+      </div>
+      <button onclick="proceedToPayment()" class="w-full bg-accent hover:bg-accent-dark text-white font-bold py-3 rounded-xl transition shadow-md">Acheter maintenant →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE ACCUEIL ========== -->
+<div id="page-home" class="page active">
+  <section class="hero-bg text-white relative overflow-hidden">
+    <div class="absolute inset-0 opacity-10 pointer-events-none">
+      <div class="absolute top-10 right-10 w-72 h-72 bg-white rounded-full blur-3xl"></div>
+      <div class="absolute bottom-0 left-0 w-96 h-96 bg-orange-500 rounded-full blur-3xl"></div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 py-20 sm:py-28 relative">
+      <div class="max-w-2xl">
+        <span class="inline-block bg-white/20 backdrop-blur text-white text-xs font-semibold px-3 py-1 rounded-full mb-4">📚 Librairie Numérique Sénégalaise</span>
+        <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+          Découvrez les<br/><span style="color:#fb923c">meilleurs ebooks</span><br/>africains
+        </h1>
+        <p class="text-white/80 text-lg mb-8 leading-relaxed">Des milliers d'ebooks sur la littérature, le business, le développement personnel et bien plus encore.</p>
+        <div class="flex flex-wrap gap-3">
+          <button onclick="showPage('catalogue')" class="bg-accent hover:bg-accent-dark text-white font-bold px-8 py-3.5 rounded-xl transition shadow-lg">Voir le catalogue →</button>
+          <button onclick="showPage('register')" class="bg-white/20 hover:bg-white/30 backdrop-blur text-white font-semibold px-8 py-3.5 rounded-xl transition border border-white/30">Créer un compte</button>
+        </div>
+        <div class="flex items-center gap-6 mt-10 text-white/70 text-sm">
+          <div><span class="text-white font-bold text-2xl">500+</span><br/>Ebooks</div>
+          <div class="w-px h-10 bg-white/30"></div>
+          <div><span class="text-white font-bold text-2xl">10k+</span><br/>Lecteurs</div>
+          <div class="w-px h-10 bg-white/30"></div>
+          <div><span class="text-white font-bold text-2xl">50+</span><br/>Auteurs</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-4 py-12">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div onclick="filterByCategory('Roman')" class="bg-white rounded-2xl p-5 text-center cursor-pointer hover:border-primary hover:shadow-md border-2 border-transparent transition group">
+        <div class="text-3xl mb-2">📖</div><p class="font-semibold text-gray-800 text-sm group-hover:text-primary">Roman</p>
+      </div>
+      <div onclick="filterByCategory('Business')" class="bg-white rounded-2xl p-5 text-center cursor-pointer hover:border-primary hover:shadow-md border-2 border-transparent transition group">
+        <div class="text-3xl mb-2">💼</div><p class="font-semibold text-gray-800 text-sm group-hover:text-primary">Business</p>
+      </div>
+      <div onclick="filterByCategory('Développement personnel')" class="bg-white rounded-2xl p-5 text-center cursor-pointer hover:border-primary hover:shadow-md border-2 border-transparent transition group">
+        <div class="text-3xl mb-2">🧠</div><p class="font-semibold text-gray-800 text-sm group-hover:text-primary">Dev. Personnel</p>
+      </div>
+      <div onclick="filterByCategory('Histoire')" class="bg-white rounded-2xl p-5 text-center cursor-pointer hover:border-primary hover:shadow-md border-2 border-transparent transition group">
+        <div class="text-3xl mb-2">🏛️</div><p class="font-semibold text-gray-800 text-sm group-hover:text-primary">Histoire</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-4 pb-12">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-gray-900">📚 Ebooks Populaires</h2>
+        <p class="text-gray-500 text-sm mt-1">Les plus lus de la semaine</p>
+      </div>
+      <button onclick="showPage('catalogue')" class="text-primary font-semibold text-sm hover:underline hidden sm:block">Voir tout →</button>
+    </div>
+    <div id="popular-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
+  </section>
+
+  <section class="bg-gray-50 py-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h2 class="font-display text-2xl sm:text-3xl font-bold text-gray-900">🆕 Nouveautés</h2>
+          <p class="text-gray-500 text-sm mt-1">Fraîchement ajoutés</p>
+        </div>
+        <button onclick="showPage('catalogue')" class="text-primary font-semibold text-sm hover:underline hidden sm:block">Voir tout →</button>
+      </div>
+      <div id="new-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
+      <div class="text-center mt-8">
+        <button onclick="showPage('catalogue')" class="bg-primary hover:bg-primary-dark text-white font-bold px-8 py-3 rounded-xl transition shadow-md">Voir tous les ebooks →</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-7xl mx-auto px-4 py-12">
+    <div class="bg-gradient-to-r from-accent to-orange-400 rounded-3xl p-8 sm:p-12 text-white flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div>
+        <h3 class="font-display text-2xl sm:text-3xl font-bold mb-2">Rejoignez GALSEN EBOOK</h3>
+        <p class="text-white/80">Créez votre compte gratuit et accédez à des milliers d'ebooks dès aujourd'hui.</p>
+      </div>
+      <button onclick="showPage('register')" class="shrink-0 bg-white text-accent font-bold px-8 py-3 rounded-xl hover:bg-orange-50 transition shadow-lg">Commencer →</button>
+    </div>
+  </section>
+</div>
+
+<!-- ========== PAGE CATALOGUE ========== -->
+<div id="page-catalogue" class="page">
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="font-display text-3xl font-bold text-gray-900 mb-1">Catalogue Ebooks</h1>
+      <p class="text-gray-500">Explorez notre collection complète</p>
+    </div>
+    <div class="bg-white rounded-2xl p-5 mb-8 shadow-sm border border-gray-100">
+      <div class="flex flex-wrap gap-3 items-center">
+        <span class="text-sm font-semibold text-gray-700">Filtrer :</span>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="filterCatalogue('all')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-primary text-white" data-cat="all">Tous</button>
+          <button onclick="filterCatalogue('Roman')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-primary transition" data-cat="Roman">Roman</button>
+          <button onclick="filterCatalogue('Business')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-primary transition" data-cat="Business">Business</button>
+          <button onclick="filterCatalogue('Développement personnel')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-primary transition" data-cat="Développement personnel">Dev. Personnel</button>
+          <button onclick="filterCatalogue('Histoire')" class="filter-btn px-4 py-2 rounded-xl text-sm font-medium bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-primary transition" data-cat="Histoire">Histoire</button>
+        </div>
+        <div class="ml-auto">
+          <select id="sort-select" onchange="sortCatalogue(this.value)" class="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="default">Par défaut</option>
+            <option value="price-asc">Prix croissant</option>
+            <option value="price-desc">Prix décroissant</option>
+            <option value="name">Nom A-Z</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="catalogue-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
+    <p id="no-results" class="hidden text-center text-gray-500 py-12 text-lg">Aucun ebook trouvé.</p>
+  </div>
+</div>
+
+<!-- ========== PAGE DETAIL ========== -->
+<div id="page-detail" class="page">
+  <div class="max-w-4xl mx-auto px-4 py-8" id="detail-content"></div>
+</div>
+
+<!-- ========== PAGE PAIEMENT ========== -->
+<div id="page-payment" class="page">
+  <div class="max-w-2xl mx-auto px-4 py-10">
+    <h1 class="font-display text-3xl font-bold text-gray-900 mb-2">Méthode de Paiement</h1>
+    <p class="text-gray-500 mb-8">Choisissez votre méthode de paiement préférée</p>
+    <div class="grid sm:grid-cols-2 gap-4 mb-8">
+      <div onclick="selectPayment('Wave')" class="pay-card cursor-pointer bg-white border-2 border-gray-200 rounded-2xl p-6 text-center hover:border-primary transition" data-method="Wave">
+        <div class="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-2xl flex items-center justify-center text-3xl">🌊</div>
+        <h3 class="font-bold text-gray-900">Wave</h3>
+        <p class="text-gray-500 text-sm mt-1">Paiement mobile Wave</p>
+      </div>
+      <div onclick="selectPayment('Orange Money')" class="pay-card cursor-pointer bg-white border-2 border-gray-200 rounded-2xl p-6 text-center hover:border-primary transition" data-method="Orange Money">
+        <div class="w-16 h-16 mx-auto mb-4 bg-orange-50 rounded-2xl flex items-center justify-center text-3xl">🟠</div>
+        <h3 class="font-bold text-gray-900">Orange Money</h3>
+        <p class="text-gray-500 text-sm mt-1">Paiement Orange Money</p>
+      </div>
+    </div>
+    <div id="pay-form" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+      <h2 class="font-bold text-gray-900 mb-5"><span id="pay-icon">💳</span> Formulaire de paiement</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Nom complet *</label>
+          <input type="text" id="pay-name" placeholder="Moussa Diallo" class="input-field"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Numéro de téléphone *</label>
+          <input type="tel" id="pay-phone" placeholder="+221 77 000 00 00" class="input-field"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Email *</label>
+          <input type="email" id="pay-email" placeholder="vous@email.com" class="input-field"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Méthode de paiement</label>
+          <input type="text" id="pay-method-val" readonly class="input-field" style="background:#f9fafb"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Montant total</label>
+          <input type="text" id="pay-amount" readonly class="input-field" style="background:#f9fafb;font-weight:700;color:#16a34a;font-size:18px"/>
+        </div>
+        <button onclick="confirmPayment()" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition shadow-md text-lg mt-2">✅ Confirmer le paiement</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE SUCCÈS ========== -->
+<div id="page-success" class="page">
+  <div class="max-w-xl mx-auto px-4 py-16 text-center">
+    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6" style="animation:bounce 1s infinite">
+      <svg class="w-12 h-12 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+    </div>
+    <h1 class="font-display text-3xl font-bold text-gray-900 mb-3">Paiement confirmé ! 🎉</h1>
+    <p class="text-gray-500 mb-6">Merci pour votre achat. Téléchargez vos ebooks ci-dessous ou retrouvez-les à tout moment dans votre bibliothèque.</p>
+
+    <!-- Boutons de téléchargement immédiat -->
+    <div id="success-downloads" class="space-y-3 mb-8"></div>
+
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <button onclick="showPage('my-ebooks')" class="bg-primary text-white font-bold px-8 py-3 rounded-xl hover:bg-primary-dark transition">📚 Ma bibliothèque</button>
+      <button onclick="showPage('home')" class="bg-gray-100 text-gray-700 font-semibold px-8 py-3 rounded-xl hover:bg-gray-200 transition">Accueil</button>
+    </div>
+    <p class="text-xs text-gray-400 mt-4">Vous pouvez retélécharger vos ebooks à tout moment depuis "Ma bibliothèque" sans repayer.</p>
+  </div>
+</div>
+
+<!-- ========== PAGE CONNEXION ========== -->
+<div id="page-login" class="page">
+  <div class="min-h-screen flex items-center justify-center px-4 py-12" style="background:linear-gradient(135deg,#f0fdf4,#fff7ed)">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-gradient-to-br from-primary to-primary-dark rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span class="text-white font-bold text-2xl">G</span>
+        </div>
+        <h1 class="font-display text-3xl font-bold text-gray-900">Connexion</h1>
+        <p class="text-gray-500 mt-2">Content de vous revoir !</p>
+      </div>
+      <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+            <input type="email" id="login-email" placeholder="vous@email.com" class="input-field"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Mot de passe</label>
+            <input type="password" id="login-password" placeholder="••••••••" class="input-field" onkeypress="if(event.key==='Enter')loginUser()"/>
+          </div>
+          <div id="login-error" class="hidden bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl"></div>
+          <div class="bg-blue-50 rounded-xl p-3 text-xs text-blue-700">
+            <strong>Compte démo admin:</strong> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="badbded7d3d4fadddbd6c9dfd494d9d5d7">[email&#160;protected]</a> / admin123
+          </div>
+          <button onclick="loginUser()" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 rounded-xl transition shadow-md">Se connecter</button>
+        </div>
+        <p class="text-center text-gray-500 text-sm mt-6">Pas encore de compte ? <button onclick="showPage('register')" class="text-primary font-semibold hover:underline">S'inscrire</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE INSCRIPTION ========== -->
+<div id="page-register" class="page">
+  <div class="min-h-screen flex items-center justify-center px-4 py-12" style="background:linear-gradient(135deg,#f0fdf4,#fff7ed)">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-gradient-to-br from-accent to-orange-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span class="text-white font-bold text-2xl">✨</span>
+        </div>
+        <h1 class="font-display text-3xl font-bold text-gray-900">Créer un compte</h1>
+        <p class="text-gray-500 mt-2">Rejoignez GALSEN EBOOK gratuitement</p>
+      </div>
+      <div class="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Nom complet *</label>
+            <input type="text" id="reg-name" placeholder="Moussa Diallo" class="input-field"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Email *</label>
+            <input type="email" id="reg-email" placeholder="vous@email.com" class="input-field"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Mot de passe *</label>
+            <input type="password" id="reg-password" placeholder="Minimum 6 caractères" class="input-field"/>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Confirmer le mot de passe *</label>
+            <input type="password" id="reg-confirm" placeholder="••••••••" class="input-field"/>
+          </div>
+          <div id="reg-error" class="hidden bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl"></div>
+          <button onclick="registerUser()" class="w-full bg-accent hover:bg-accent-dark text-white font-bold py-3.5 rounded-xl transition shadow-md">Créer mon compte →</button>
+        </div>
+        <p class="text-center text-gray-500 text-sm mt-6">Déjà un compte ? <button onclick="showPage('login')" class="text-primary font-semibold hover:underline">Se connecter</button></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE MA BIBLIOTHÈQUE ========== -->
+<div id="page-my-ebooks" class="page">
+  <div class="max-w-5xl mx-auto px-4 py-10">
+    <h1 class="font-display text-3xl font-bold text-gray-900 mb-2">📚 Ma Bibliothèque</h1>
+    <p class="text-gray-500 mb-8">Vos ebooks achetés</p>
+    <div id="my-ebooks-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
+    <div id="my-ebooks-empty" class="hidden text-center py-20">
+      <div class="text-6xl mb-4">📭</div>
+      <h3 class="font-semibold text-gray-700 text-xl mb-2">Bibliothèque vide</h3>
+      <p class="text-gray-500 mb-6">Vous n'avez pas encore acheté d'ebooks.</p>
+      <button onclick="showPage('catalogue')" class="bg-primary text-white font-bold px-6 py-3 rounded-xl hover:bg-primary-dark transition">Explorer le catalogue</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE PROFIL ========== -->
+<div id="page-profile" class="page">
+  <div class="max-w-xl mx-auto px-4 py-10">
+    <h1 class="font-display text-3xl font-bold text-gray-900 mb-8">Mon Profil</h1>
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+      <div class="flex items-center gap-5 mb-8 pb-8 border-b border-gray-100">
+        <div class="w-20 h-20 bg-primary rounded-full flex items-center justify-center shadow-lg">
+          <span class="text-white font-bold text-3xl" id="profile-avatar">U</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-xl text-gray-900" id="profile-name">Utilisateur</h2>
+          <p class="text-gray-500" id="profile-email-disp"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1b7e767a72775b7e637a766b777e35787476">[email&#160;protected]</a></p>
+          <span class="inline-block mt-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium" id="profile-role">Membre</span>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Nom complet</label>
+          <input type="text" id="profile-name-input" class="input-field"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+          <input type="email" id="profile-email-input" class="input-field"/>
+        </div>
+        <button onclick="updateProfile()" class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE À PROPOS ========== -->
+<div id="page-about" class="page">
+  <div class="max-w-3xl mx-auto px-4 py-12">
+    <div class="text-center mb-12">
+      <h1 class="font-display text-4xl font-bold text-gray-900 mb-4">À propos de GALSEN EBOOK</h1>
+      <p class="text-gray-600 text-lg leading-relaxed">La première librairie numérique dédiée aux auteurs et lecteurs sénégalais et africains.</p>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-6 mb-12">
+      <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100"><div class="text-4xl mb-3">🌍</div><h3 class="font-bold text-gray-900 mb-2">Africain & Fier</h3><p class="text-gray-500 text-sm">Plateforme créée par et pour les Africains</p></div>
+      <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100"><div class="text-4xl mb-3">📱</div><h3 class="font-bold text-gray-900 mb-2">Mobile First</h3><p class="text-gray-500 text-sm">Accessible sur tous vos appareils</p></div>
+      <div class="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100"><div class="text-4xl mb-3">💳</div><h3 class="font-bold text-gray-900 mb-2">Paiement Local</h3><p class="text-gray-500 text-sm">Wave et Orange Money acceptés</p></div>
+    </div>
+    <div class="bg-gradient-to-r from-primary to-primary-dark text-white rounded-3xl p-8 text-center">
+      <h2 class="font-display text-2xl font-bold mb-3">Rejoignez notre communauté</h2>
+      <p class="text-white/80 mb-5">Des milliers de lecteurs passionnés vous attendent</p>
+      <button onclick="showPage('register')" class="bg-white text-primary font-bold px-8 py-3 rounded-xl hover:bg-green-50 transition">Créer un compte gratuit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== PAGE ADMIN ========== -->
+<div id="page-admin" class="page">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="font-display text-3xl font-bold text-gray-900">⚙️ Dashboard Admin</h1>
+        <p class="text-gray-500">Gérer les ebooks de la plateforme</p>
+      </div>
+      <button onclick="showAddEbookModal()" class="bg-primary hover:bg-primary-dark text-white font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Ajouter un ebook
+      </button>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-gray-500 text-xs font-medium uppercase">Total ebooks</p><p class="font-display text-3xl font-bold text-gray-900 mt-1" id="stat-ebooks">0</p></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-gray-500 text-xs font-medium uppercase">Utilisateurs</p><p class="font-display text-3xl font-bold text-gray-900 mt-1" id="stat-users">0</p></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-gray-500 text-xs font-medium uppercase">Ventes</p><p class="font-display text-3xl font-bold text-primary mt-1" id="stat-sales">0</p></div>
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100"><p class="text-gray-500 text-xs font-medium uppercase">Revenus</p><p class="font-display text-3xl font-bold text-accent mt-1" id="stat-revenue">0 F</p></div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="p-5 border-b border-gray-100"><h2 class="font-semibold text-gray-900">Tous les ebooks</h2></div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th class="text-left px-5 py-3">Ebook</th>
+              <th class="text-left px-5 py-3 hidden sm:table-cell">Catégorie</th>
+              <th class="text-left px-5 py-3">Prix</th>
+              <th class="text-right px-5 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-table" class="divide-y divide-gray-50"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div id="ebook-modal" class="modal-overlay">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 max-h-screen overflow-y-auto">
+    <div class="flex items-center justify-between p-6 border-b border-gray-100">
+      <h2 class="font-bold text-gray-900 text-xl" id="modal-title">Ajouter un ebook</h2>
+      <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-xl">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <input type="hidden" id="modal-id"/>
+      <div><label class="block text-sm font-semibold text-gray-700 mb-1">Titre *</label><input type="text" id="modal-titre" class="input-field" placeholder="Titre de l'ebook"/></div>
+      <div><label class="block text-sm font-semibold text-gray-700 mb-1">Auteur *</label><input type="text" id="modal-auteur" class="input-field" placeholder="Nom de l'auteur"/></div>
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Catégorie</label>
+        <select id="modal-cat" class="input-field">
+          <option value="Roman">Roman</option>
+          <option value="Business">Business</option>
+          <option value="Développement personnel">Développement personnel</option>
+          <option value="Histoire">Histoire</option>
+          <option value="Science">Science</option>
+          <option value="Religion">Religion</option>
+        </select>
+      </div>
+      <div><label class="block text-sm font-semibold text-gray-700 mb-1">Description</label><textarea id="modal-desc" rows="3" class="input-field resize-none" placeholder="Description..."></textarea></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-sm font-semibold text-gray-700 mb-1">Prix (FCFA) *</label><input type="number" id="modal-prix" class="input-field" placeholder="2500"/></div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Type</label>
+          <select id="modal-pop" class="input-field">
+            <option value="normal">Normal</option>
+            <option value="popular">Populaire</option>
+            <option value="new">Nouveau</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Photo de couverture</label>
+        <div id="image-drop-zone" onclick="document.getElementById('modal-img-file').click()" 
+          style="border:2px dashed #d1fae5;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#f0fdf4;transition:all .2s"
+          ondragover="event.preventDefault();this.style.borderColor='#16a34a'" 
+          ondragleave="this.style.borderColor='#d1fae5'"
+          ondrop="handleImageDrop(event)">
+          <div id="image-preview-wrap">
+            <div style="font-size:32px">🖼️</div>
+            <p style="color:#16a34a;font-size:13px;font-weight:600;margin-top:4px">Cliquer ou glisser une image</p>
+            <p style="color:#9ca3af;font-size:11px">JPG, PNG, WEBP – max 5 Mo</p>
+          </div>
+          <img id="image-preview" src="" style="display:none;max-height:120px;border-radius:8px;margin:0 auto"/>
+        </div>
+        <input type="file" id="modal-img-file" accept="image/*" style="display:none" onchange="handleImageFile(this)"/>
+        <input type="hidden" id="modal-img"/>
+      </div>
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Fichier PDF du livre</label>
+        <div id="pdf-drop-zone" onclick="document.getElementById('modal-pdf-file').click()"
+          style="border:2px dashed #fed7aa;border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:#fff7ed;transition:all .2s"
+          ondragover="event.preventDefault();this.style.borderColor='#ea580c'"
+          ondragleave="this.style.borderColor='#fed7aa'"
+          ondrop="handlePdfDrop(event)">
+          <div id="pdf-preview-wrap">
+            <div style="font-size:32px">📄</div>
+            <p style="color:#ea580c;font-size:13px;font-weight:600;margin-top:4px">Cliquer ou glisser un PDF</p>
+            <p style="color:#9ca3af;font-size:11px">PDF uniquement – max 50 Mo</p>
+          </div>
+          <div id="pdf-info" style="display:none;color:#ea580c;font-size:13px;font-weight:600"></div>
+        </div>
+        <input type="file" id="modal-pdf-file" accept=".pdf" style="display:none" onchange="handlePdfFile(this)"/>
+        <input type="hidden" id="modal-pdf"/>
+      </div>
+      <div><label class="block text-sm font-semibold text-gray-700 mb-1">Emoji couverture (si pas de photo)</label><input type="text" id="modal-emoji" class="input-field" placeholder="📚"/></div>
+    </div>
+    <div class="px-6 pb-6 flex gap-3">
+      <button onclick="closeModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition">Annuler</button>
+      <button onclick="saveEbook()" class="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-3 rounded-xl transition">Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="bg-gray-900 text-white py-12 mt-12">
+  <div class="max-w-7xl mx-auto px-4">
+    <div class="grid sm:grid-cols-3 gap-8 mb-8">
+      <div>
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-10 h-10 bg-primary rounded-xl flex items-center justify-center"><span class="text-white font-bold text-sm">GE</span></div>
+          <span class="font-display text-xl font-bold">GALSEN EBOOK</span>
+        </div>
+        <p class="text-gray-400 text-sm leading-relaxed">La librairie numérique de référence pour la littérature africaine.</p>
+      </div>
+      <div>
+        <h4 class="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-300">Navigation</h4>
+        <div class="space-y-2 text-sm text-gray-400">
+          <button onclick="showPage('home')" class="block hover:text-white transition">Accueil</button>
+          <button onclick="showPage('catalogue')" class="block hover:text-white transition">Catalogue</button>
+          <button onclick="showPage('about')" class="block hover:text-white transition">À propos</button>
+        </div>
+      </div>
+      <div>
+        <h4 class="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-300">Contact</h4>
+        <div class="space-y-2 text-sm text-gray-400">
+          <p>📧 <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="caa9a5a4beaba9be8aadaba6b9afa4afa8a5a5a1e4b9a4">[email&#160;protected]</a></p>
+          <p>📱 +221 77 000 00 00</p>
+          <p>📍 Dakar, Sénégal</p>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-gray-800 pt-6 text-center text-gray-500 text-sm">
+      <p>© 2025 GALSEN EBOOK – Tous droits réservés</p>
+    </div>
+  </div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ===== DATA =====
+let DB = {
+  users: JSON.parse(localStorage.getItem('ge_users') || '[]'),
+  ebooks: JSON.parse(localStorage.getItem('ge_ebooks') || 'null'),
+  cart: JSON.parse(localStorage.getItem('ge_cart') || '[]'),
+  purchases: JSON.parse(localStorage.getItem('ge_purchases') || '[]'),
+  currentUser: JSON.parse(localStorage.getItem('ge_current') || 'null'),
+};
+
+if (!DB.users.find(u => u.email === 'admin@galsen.com')) {
+  DB.users.push({ id: 'admin', name: 'Administrateur', email: 'admin@galsen.com', password: 'admin123', role: 'admin', created: new Date().toISOString() });
+  saveUsers();
+}
+
+const defaultEbooks = [
+  { id:'e1', titre:"L'Aventure Ambiguë", auteur:'Cheikh Hamidou Kane', desc:"Un roman philosophique profond explorant l'identité africaine entre tradition et modernité.", prix:2500, categorie:'Roman', emoji:'📖', popular:true, isNew:false, note:4.8 },
+  { id:'e2', titre:'Le Roi Miraculé', auteur:'Mongo Beti', desc:"Un roi africain converti de force au christianisme recouvre sa santé et sa conscience.", prix:1800, categorie:'Roman', emoji:'👑', popular:true, isNew:false, note:4.5 },
+  { id:'e3', titre:'Réussir en Afrique', auteur:'Ibrahima Fall', desc:'Guide pratique pour entrepreneurs africains souhaitant lancer et développer leur business.', prix:4500, categorie:'Business', emoji:'💼', popular:true, isNew:false, note:4.9 },
+  { id:'e4', titre:'Mindset Gagnant', auteur:'Fatou Diop', desc:"Développez un état d'esprit de gagnant et transformez votre vie grâce à des techniques éprouvées.", prix:3200, categorie:'Développement personnel', emoji:'🧠', popular:false, isNew:true, note:4.7 },
+  { id:'e5', titre:'Histoire du Sénégal', auteur:'Mamadou Diouf', desc:"Une fresque historique complète du Sénégal, des royaumes précoloniaux à l'indépendance.", prix:3800, categorie:'Histoire', emoji:'🏛️', popular:false, isNew:true, note:4.6 },
+  { id:'e6', titre:"L'Islam en Afrique", auteur:'Serigne Ba', desc:"Histoire et influence de l'Islam dans la construction des sociétés africaines.", prix:2900, categorie:'Religion', emoji:'🕌', popular:false, isNew:true, note:4.4 },
+  { id:'e7', titre:'Finance Personnelle', auteur:'Aissatou Sy', desc:'Maîtrisez vos finances, économisez, investissez et bâtissez votre patrimoine en Afrique.', prix:3500, categorie:'Business', emoji:'💰', popular:true, isNew:false, note:4.8 },
+  { id:'e8', titre:'Code & Innovation', auteur:'Oumar Tech', desc:'Initiation à la programmation et à l\'entrepreneuriat tech pour les jeunes africains.', prix:5000, categorie:'Science', emoji:'💻', popular:false, isNew:true, note:4.9 },
+];
+if (!DB.ebooks) { DB.ebooks = defaultEbooks; saveEbooks(); }
+
+let currentFilter = 'all', currentSort = 'default', editingId = null, selMethod = '';
+
+function saveUsers()     { localStorage.setItem('ge_users', JSON.stringify(DB.users)); }
+function saveEbooks()    { localStorage.setItem('ge_ebooks', JSON.stringify(DB.ebooks)); }
+function saveCart()      { localStorage.setItem('ge_cart', JSON.stringify(DB.cart)); }
+function savePurchases() { localStorage.setItem('ge_purchases', JSON.stringify(DB.purchases)); }
+function saveCurrentUser(){ localStorage.setItem('ge_current', JSON.stringify(DB.currentUser)); }
+
+// ===== NAVIGATION =====
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) { el.classList.add('active'); window.scrollTo(0,0); }
+  document.querySelectorAll('[id^="nav-"]').forEach(n => n.classList.remove('active'));
+  const nav = document.getElementById('nav-' + page);
+  if (nav) nav.classList.add('active');
+  closeCart();
+  if (page === 'home') renderHome();
+  if (page === 'catalogue') renderCatalogue();
+  if (page === 'admin') { if (!DB.currentUser || DB.currentUser.role !== 'admin') { showPage('login'); return; } renderAdmin(); }
+  if (page === 'my-ebooks') renderMyEbooks();
+  if (page === 'profile') renderProfile();
+  if (page === 'payment') initPaymentPage();
+}
+
+// ===== AUTH =====
+function loginUser() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.classList.add('hidden');
+  const user = DB.users.find(u => u.email === email && u.password === pass);
+  if (!user) { err.textContent = 'Email ou mot de passe incorrect.'; err.classList.remove('hidden'); return; }
+  DB.currentUser = user; saveCurrentUser(); updateAuthUI();
+  showNotif('Bienvenue, ' + user.name + ' ! 👋');
+  showPage(user.role === 'admin' ? 'admin' : 'home');
+}
+
+function registerUser() {
+  const name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-password').value;
+  const conf = document.getElementById('reg-confirm').value;
+  const err = document.getElementById('reg-error');
+  err.classList.add('hidden');
+  if (!name||!email||!pass) { err.textContent='Tous les champs sont requis.'; err.classList.remove('hidden'); return; }
+  if (pass !== conf) { err.textContent='Les mots de passe ne correspondent pas.'; err.classList.remove('hidden'); return; }
+  if (pass.length < 6) { err.textContent='Le mot de passe doit faire au moins 6 caractères.'; err.classList.remove('hidden'); return; }
+  if (DB.users.find(u=>u.email===email)) { err.textContent='Cet email est déjà utilisé.'; err.classList.remove('hidden'); return; }
+  const user = { id:'u'+Date.now(), name, email, password:pass, role:'user', created:new Date().toISOString() };
+  DB.users.push(user); saveUsers();
+  DB.currentUser = user; saveCurrentUser(); updateAuthUI();
+  showNotif('Compte créé avec succès ! 🎉');
+  showPage('home');
+}
+
+function logout() {
+  DB.currentUser = null; localStorage.removeItem('ge_current');
+  updateAuthUI(); document.getElementById('user-dropdown').classList.add('hidden');
+  showNotif('Déconnexion réussie'); showPage('home');
+}
+
+function updateAuthUI() {
+  const authEl = document.getElementById('auth-buttons');
+  const userEl = document.getElementById('user-menu');
+  if (DB.currentUser) {
+    authEl.classList.add('hidden'); userEl.classList.remove('hidden'); userEl.style.display='flex';
+    document.getElementById('user-avatar').textContent = DB.currentUser.name.charAt(0).toUpperCase();
+    document.getElementById('user-name-nav').textContent = DB.currentUser.name.split(' ')[0];
+    document.getElementById('admin-link').classList.toggle('hidden', DB.currentUser.role !== 'admin');
+  } else {
+    authEl.classList.remove('hidden'); userEl.classList.add('hidden'); userEl.style.display='';
+  }
+}
+
+function toggleDropdown() { document.getElementById('user-dropdown').classList.toggle('hidden'); }
+document.addEventListener('click', e => { if (!e.target.closest('#user-menu')) document.getElementById('user-dropdown')?.classList.add('hidden'); });
+
+// ===== EBOOK CARD =====
+function ebookCard(b, badge='') {
+  const inCart = DB.cart.find(c => c.id === b.id);
+  return `
+    <div class="ebook-card bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col">
+      <div class="relative cursor-pointer" onclick="showDetail('${b.id}')">
+        <div class="aspect-ratio" style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);display:flex;align-items:center;justify-content:center;overflow:hidden">
+          ${b.image ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:64px;align-items:center;justify-content:center;width:100%;height:100%">${b.emoji||'📚'}</span>` : `<span style="font-size:64px">${b.emoji||'📚'}</span>`}
+        </div>
+        ${badge ? `<span class="absolute top-2 left-2 badge-${badge} text-white text-xs font-bold px-2 py-0.5 rounded-lg">${badge==='new'?'NOUVEAU':'TOP'}</span>` : ''}
+        <div class="absolute top-2 right-2 bg-white/90 rounded-lg px-1.5 py-0.5 flex items-center gap-0.5">
+          <span class="stars text-xs">★</span><span class="text-xs font-bold text-gray-700">${b.note}</span>
+        </div>
+      </div>
+      <div class="p-3 flex flex-col flex-1">
+        <span class="text-xs font-medium mb-1" style="color:#16a34a">${b.categorie}</span>
+        <h3 class="font-semibold text-gray-900 text-sm leading-snug mb-0.5 cursor-pointer hover:text-primary" onclick="showDetail('${b.id}')" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${b.titre}</h3>
+        <p class="text-xs text-gray-500 mb-3">${b.auteur}</p>
+        <div class="flex items-center justify-between mt-auto">
+          <span class="font-bold text-sm" style="color:#ea580c">${b.prix.toLocaleString()} F</span>
+          <button onclick="addToCart('${b.id}')" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition" style="${inCart?'background:#dcfce7;color:#16a34a':'background:#16a34a;color:white'}">
+            ${inCart ? '✓ Ajouté' : '+ Panier'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ===== HOME =====
+function renderHome() {
+  const popular = DB.ebooks.filter(e=>e.popular).slice(0,4);
+  const newBooks = DB.ebooks.filter(e=>e.isNew).slice(0,4);
+  document.getElementById('popular-grid').innerHTML = popular.map(e=>ebookCard(e,'hot')).join('');
+  document.getElementById('new-grid').innerHTML = newBooks.map(e=>ebookCard(e,'new')).join('');
+}
+
+// ===== CATALOGUE =====
+function renderCatalogue(filter=currentFilter, sort=currentSort) {
+  let books = [...DB.ebooks];
+  if (filter !== 'all') books = books.filter(b=>b.categorie===filter);
+  if (sort==='price-asc') books.sort((a,b)=>a.prix-b.prix);
+  if (sort==='price-desc') books.sort((a,b)=>b.prix-a.prix);
+  if (sort==='name') books.sort((a,b)=>a.titre.localeCompare(b.titre));
+  const grid = document.getElementById('catalogue-grid');
+  const noR = document.getElementById('no-results');
+  if (!books.length) { grid.innerHTML=''; noR.classList.remove('hidden'); }
+  else { noR.classList.add('hidden'); grid.innerHTML = books.map(e=>ebookCard(e)).join(''); }
+}
+
+function filterCatalogue(cat) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const active = btn.dataset.cat === cat;
+    btn.style.background = active ? '#16a34a' : '';
+    btn.style.color = active ? 'white' : '';
+    btn.className = btn.className.replace(/bg-primary\s*/g,'').replace(/text-white\s*/g,'');
+    if (active) { btn.classList.add('bg-primary','text-white'); }
+  });
+  renderCatalogue();
+}
+
+function filterByCategory(cat) { showPage('catalogue'); setTimeout(()=>filterCatalogue(cat),50); }
+function sortCatalogue(val) { currentSort=val; renderCatalogue(); }
+
+function searchEbooks(q) {
+  if (!q) { renderCatalogue(); return; }
+  const ql = q.toLowerCase();
+  const books = DB.ebooks.filter(b=>b.titre.toLowerCase().includes(ql)||b.auteur.toLowerCase().includes(ql)||b.categorie.toLowerCase().includes(ql));
+  document.getElementById('catalogue-grid').innerHTML = books.map(e=>ebookCard(e)).join('');
+  document.getElementById('no-results').classList.toggle('hidden', books.length>0);
+  if (document.getElementById('page-catalogue').classList.contains('active')) return;
+  showPage('catalogue');
+}
+
+function toggleSearch() { const s=document.getElementById('search-bar'); s.classList.toggle('hidden'); if(!s.classList.contains('hidden')) document.getElementById('search-input').focus(); }
+function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
+
+// ===== DETAIL =====
+function showDetail(id) {
+  const b = DB.ebooks.find(x=>x.id===id);
+  if (!b) return;
+  const inCart = DB.cart.find(c=>c.id===id);
+  document.getElementById('detail-content').innerHTML = `
+    <button onclick="history.back()" class="flex items-center gap-2 text-gray-500 hover:text-primary mb-6 text-sm font-medium">← Retour</button>
+    <div class="grid sm:grid-cols-5 gap-8">
+      <div class="sm:col-span-2">
+        <div style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.1);overflow:hidden">
+          ${b.image ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:96px;align-items:center;justify-content:center">${b.emoji||'📚'}</span>` : `<span style="font-size:96px">${b.emoji||'📚'}</span>`}
+        </div>
+      </div>
+      <div class="sm:col-span-3">
+        <span class="inline-block bg-green-100 text-sm font-semibold px-3 py-1 rounded-full mb-3" style="color:#16a34a">${b.categorie}</span>
+        <h1 class="font-display text-3xl font-bold text-gray-900 mb-2">${b.titre}</h1>
+        <p class="text-gray-500 mb-4">Par <strong class="text-gray-700">${b.auteur}</strong></p>
+        <div class="flex items-center gap-2 mb-5"><span class="stars">★★★★★</span><span class="font-semibold text-gray-700">${b.note}/5</span></div>
+        <p class="text-gray-600 leading-relaxed mb-8">${b.desc||'Aucune description.'}</p>
+        <div class="bg-gray-50 rounded-2xl p-5 mb-6">
+          <span class="text-3xl font-bold" style="color:#ea580c">${b.prix.toLocaleString()} FCFA</span>
+          <p class="text-gray-500 text-sm mt-1">Paiement sécurisé via Wave ou Orange Money</p>
+        </div>
+        <div class="flex gap-3 flex-wrap">
+          <button id="cart-btn-${b.id}" onclick="addToCartFromDetail('${b.id}')" class="flex-1 font-bold py-3.5 rounded-xl transition" style="${inCart?'background:#dcfce7;color:#16a34a':'background:#16a34a;color:white'}">
+            ${inCart?'✓ Dans le panier':'🛒 Ajouter au panier'}
+          </button>
+          <button onclick="addToCart('${b.id}');showPage('payment')" class="flex-1 font-bold py-3.5 rounded-xl transition text-white" style="background:#ea580c">Acheter maintenant →</button>
+        </div>
+      </div>
+    </div>`;
+  showPage('detail');
+}
+
+function addToCartFromDetail(id) {
+  addToCart(id);
+  const btn = document.getElementById('cart-btn-'+id);
+  if (btn) { btn.textContent='✓ Dans le panier'; btn.style.background='#dcfce7'; btn.style.color='#16a34a'; }
+}
+
+// ===== CART =====
+function addToCart(id) {
+  const b = DB.ebooks.find(x=>x.id===id);
+  if (!b||DB.cart.find(c=>c.id===id)) return;
+  DB.cart.push({ id:b.id, titre:b.titre, prix:b.prix, emoji:b.emoji, auteur:b.auteur });
+  saveCart(); showNotif(b.titre+' ajouté au panier ✓'); updateCartBadge();
+  const activePage = document.querySelector('.page.active')?.id;
+  if (activePage==='page-home') renderHome();
+  if (activePage==='page-catalogue') renderCatalogue();
+}
+
+function removeFromCart(id) {
+  DB.cart = DB.cart.filter(c=>c.id!==id); saveCart(); updateCartBadge(); renderCartItems();
+}
+
+function updateCartBadge() {
+  const n = DB.cart.length;
+  const b = document.getElementById('cart-badge');
+  b.textContent = n; b.classList.toggle('hidden', n===0);
+}
+
+function renderCartItems() {
+  const el = document.getElementById('cart-items');
+  if (!DB.cart.length) { el.innerHTML=`<div class="text-center py-12"><div style="font-size:56px">🛒</div><p class="text-gray-500 mt-3">Votre panier est vide</p></div>`; }
+  else { el.innerHTML = DB.cart.map(item=>`
+    <div class="flex items-center gap-3 bg-gray-50 rounded-xl p-3">
+      <div class="w-12 h-16 bg-white rounded-lg flex items-center justify-center text-2xl shadow-sm shrink-0">${item.emoji||'📚'}</div>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-gray-900 text-sm" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden">${item.titre}</p>
+        <p class="text-xs text-gray-500">${item.auteur}</p>
+        <p class="font-bold text-sm mt-1" style="color:#ea580c">${item.prix.toLocaleString()} FCFA</p>
+      </div>
+      <button onclick="removeFromCart('${item.id}')" class="p-2 hover:bg-red-50 rounded-lg transition" style="color:#9ca3af">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>`).join(''); }
+  const total = DB.cart.reduce((s,i)=>s+i.prix,0);
+  document.getElementById('cart-total').textContent = total.toLocaleString()+' FCFA';
+}
+
+function openCart() { document.getElementById('cart-sidebar').classList.add('open'); document.getElementById('cart-overlay').classList.add('show'); renderCartItems(); }
+function closeCart() { document.getElementById('cart-sidebar').classList.remove('open'); document.getElementById('cart-overlay').classList.remove('show'); }
+
+function proceedToPayment() {
+  if (!DB.cart.length) { showNotif('Votre panier est vide'); return; }
+  closeCart(); showPage('payment');
+}
+
+// ===== PAYMENT =====
+function initPaymentPage() {
+  document.getElementById('pay-form').classList.add('hidden');
+  document.querySelectorAll('.pay-card').forEach(c=>{ c.style.borderColor=''; c.style.background=''; });
+  selMethod = '';
+  if (DB.currentUser) { document.getElementById('pay-name').value=DB.currentUser.name; document.getElementById('pay-email').value=DB.currentUser.email; }
+  else { document.getElementById('pay-name').value=''; document.getElementById('pay-email').value=''; }
+  const total = DB.cart.reduce((s,i)=>s+i.prix,0);
+  document.getElementById('pay-amount').value = total.toLocaleString()+' FCFA';
+}
+
+function selectPayment(method) {
+  selMethod = method;
+  document.querySelectorAll('.pay-card').forEach(c=>{ c.style.borderColor=c.dataset.method===method?'#16a34a':''; c.style.background=c.dataset.method===method?'#f0fdf4':''; });
+  document.getElementById('pay-method-val').value = method;
+  document.getElementById('pay-icon').textContent = method==='Wave'?'🌊':'🟠';
+  document.getElementById('pay-form').classList.remove('hidden');
+  document.getElementById('pay-form').scrollIntoView({behavior:'smooth'});
+}
+
+function confirmPayment() {
+  const name=document.getElementById('pay-name').value.trim();
+  const phone=document.getElementById('pay-phone').value.trim();
+  const email=document.getElementById('pay-email').value.trim();
+  if (!name||!phone||!email||!selMethod) { showNotif('Veuillez remplir tous les champs et choisir une méthode'); return; }
+
+  const total = DB.cart.reduce((s,i)=>s+i.prix,0);
+
+  if (selMethod === 'Wave') {
+    // ============================================================
+    // WAVE API — COLLEZ VOTRE CODE ICI
+    // ============================================================
+    // Exemple d'intégration Wave Checkout :
+    //
+    // const response = await fetch('https://api.wave.com/v1/checkout/sessions', {
+    //   method: 'POST',
+    //   headers: {
+    //     'Authorization': 'Bearer VOTRE_CLE_API_WAVE_ICI',  // <-- COLLEZ VOTRE CLÉ API WAVE ICI
+    //     'Content-Type': 'application/json'
+    //   },
+    //   body: JSON.stringify({
+    //     amount: total,
+    //     currency: 'XOF',
+    //     error_url: window.location.href,
+    //     success_url: window.location.href + '?success=true',
+    //   })
+    // });
+    // const data = await response.json();
+    // window.location.href = data.wave_launch_url; // Redirige vers Wave
+    // ============================================================
+    console.log('Wave API: total =', total, 'XOF, phone =', phone);
+  }
+
+  if (selMethod === 'Orange Money') {
+    // ============================================================
+    // ORANGE MONEY API — COLLEZ VOTRE CODE ICI
+    // ============================================================
+    // Exemple d'intégration Orange Money :
+    //
+    // const response = await fetch('https://api.orange.com/orange-money-webpay/dev/v1/webpayment', {
+    //   method: 'POST',
+    //   headers: {
+    //     'Authorization': 'Bearer VOTRE_TOKEN_ORANGE_MONEY_ICI',  // <-- COLLEZ VOTRE TOKEN ICI
+    //     'Content-Type': 'application/json'
+    //   },
+    //   body: JSON.stringify({
+    //     merchant_key: 'VOTRE_MERCHANT_KEY_ICI',  // <-- COLLEZ VOTRE MERCHANT KEY ICI
+    //     currency: 'OUV',
+    //     order_id: 'CMD_' + Date.now(),
+    //     amount: total,
+    //     return_url: window.location.href + '?success=true',
+    //     cancel_url: window.location.href,
+    //     notif_url: 'https://votre-backend.com/api/payment/notify',
+    //     lang: 'fr',
+    //     reference: 'GALSEN_' + Date.now(),
+    //   })
+    // });
+    // const data = await response.json();
+    // window.location.href = data.payment_url; // Redirige vers Orange Money
+    // ============================================================
+    console.log('Orange Money API: total =', total, 'XOF, phone =', phone);
+  }
+
+  // Enregistrement de la commande
+  if (DB.currentUser) {
+    DB.purchases.push(...DB.cart.map(i=>({...i,userId:DB.currentUser.id,date:new Date().toISOString()})));
+    savePurchases();
+  }
+  const prevRev = parseInt(localStorage.getItem('ge_revenue')||'0');
+  const prevSales = parseInt(localStorage.getItem('ge_sales')||'0');
+  localStorage.setItem('ge_revenue', prevRev + total);
+  localStorage.setItem('ge_sales', prevSales + DB.cart.length);
+
+  // Préparer les boutons de téléchargement sur la page succès
+  const purchasedBooks = DB.cart.map(item => DB.ebooks.find(b=>b.id===item.id)).filter(Boolean);
+
+  DB.cart=[]; saveCart(); updateCartBadge();
+  showPage('success');
+
+  // Afficher les boutons de téléchargement immédiat
+  const dlZone = document.getElementById('success-downloads');
+  if (dlZone) {
+    if (purchasedBooks.length === 0) {
+      dlZone.innerHTML = '';
+    } else {
+      dlZone.innerHTML = purchasedBooks.map(b => `
+        <div class="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div style="width:44px;height:56px;background:linear-gradient(135deg,#f0fdf4,#fff7ed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${b.emoji||'📚'}</div>
+            <div class="text-left">
+              <p class="font-semibold text-gray-900 text-sm">${b.titre}</p>
+              <p class="text-xs text-gray-500">${b.auteur}</p>
+            </div>
+          </div>
+          ${b.pdf
+            ? `<button onclick="downloadPdf(DB.ebooks.find(x=>x.id==='${b.id}'))"
+                class="shrink-0 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1"
+                style="background:#16a34a">
+                📥 Télécharger
+               </button>`
+            : `<span class="text-xs text-gray-400">Pas de PDF</span>`
+          }
+        </div>
+      `).join('');
+    }
+  }
+
+  // Téléchargement automatique si 1 seul livre
+  if (purchasedBooks.length === 1 && purchasedBooks[0].pdf) {
+    setTimeout(() => downloadPdf(purchasedBooks[0]), 800);
+  }
+}
+
+// ===== MY EBOOKS =====
+// Téléchargement PDF
+function downloadPdf(book) {
+  if (!book.pdf) {
+    showNotif('Aucun PDF disponible pour cet ebook');
+    return;
+  }
+  const link = document.createElement('a');
+  link.href = book.pdf;
+  link.download = book.titre.replace(/[^a-z0-9]/gi, '_') + '.pdf';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showNotif('Téléchargement de "' + book.titre + '" démarré 📥');
+}
+
+function renderMyEbooks() {
+  if (!DB.currentUser) { showPage('login'); return; }
+  const bought = DB.purchases.filter(p=>p.userId===DB.currentUser.id);
+  const ids = [...new Set(bought.map(p=>p.id))];
+  const books = ids.map(id=>DB.ebooks.find(b=>b.id===id)).filter(Boolean);
+  const grid=document.getElementById('my-ebooks-grid'), empty=document.getElementById('my-ebooks-empty');
+  if (!books.length) { grid.innerHTML=''; empty.classList.remove('hidden'); }
+  else {
+    empty.classList.add('hidden');
+    grid.innerHTML = books.map(b=>`
+      <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+        <div style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="showDetail('${b.id}')">
+          ${b.image
+            ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:56px;align-items:center;justify-content:center;width:100%;height:100%">${b.emoji||'\u{1F4DA}'}</span>`
+            : `<span style="font-size:56px">${b.emoji||'\u{1F4DA}'}</span>`
+          }
+        </div>
+        <div class="p-3">
+          <h3 class="font-semibold text-gray-900 text-sm" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden">${b.titre}</h3>
+          <p class="text-xs text-gray-500 mb-2">${b.auteur}</p>
+          ${b.pdf
+            ? `<button onclick="downloadPdf(DB.ebooks.find(x=>x.id==='${b.id}'))" class="w-full text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1" style="background:#16a34a">
+                📥 Télécharger le PDF
+               </button>`
+            : `<div class="w-full text-center text-xs py-2 rounded-lg" style="background:#f3f4f6;color:#9ca3af">PDF non disponible</div>`
+          }
+        </div>
+      </div>`).join('');
+  }
+}
+
+// ===== PROFILE =====
+function renderProfile() {
+  if (!DB.currentUser) { showPage('login'); return; }
+  const u=DB.currentUser;
+  document.getElementById('profile-avatar').textContent=u.name.charAt(0).toUpperCase();
+  document.getElementById('profile-name').textContent=u.name;
+  document.getElementById('profile-email-disp').textContent=u.email;
+  document.getElementById('profile-role').textContent=u.role==='admin'?'⭐ Administrateur':'👤 Membre';
+  document.getElementById('profile-name-input').value=u.name;
+  document.getElementById('profile-email-input').value=u.email;
+}
+
+function updateProfile() {
+  const name=document.getElementById('profile-name-input').value.trim();
+  const email=document.getElementById('profile-email-input').value.trim();
+  if (!name||!email) return;
+  const idx=DB.users.findIndex(u=>u.id===DB.currentUser.id);
+  DB.users[idx].name=name; DB.users[idx].email=email;
+  DB.currentUser.name=name; DB.currentUser.email=email;
+  saveUsers(); saveCurrentUser(); renderProfile(); updateAuthUI();
+  showNotif('Profil mis à jour ✓');
+}
+
+// ===== ADMIN =====
+function renderAdmin() {
+  document.getElementById('stat-ebooks').textContent=DB.ebooks.length;
+  document.getElementById('stat-users').textContent=DB.users.filter(u=>u.role!=='admin').length;
+  document.getElementById('stat-sales').textContent=localStorage.getItem('ge_sales')||0;
+  const rev=parseInt(localStorage.getItem('ge_revenue')||'0');
+  document.getElementById('stat-revenue').textContent=rev.toLocaleString()+' F';
+  document.getElementById('admin-table').innerHTML=DB.ebooks.map(b=>`
+    <tr class="hover:bg-gray-50 transition">
+      <td class="px-5 py-4">
+        <div class="flex items-center gap-3">
+          <div style="width:40px;height:50px;background:#f0fdf4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${b.emoji||'📚'}</div>
+          <div><p class="font-semibold text-gray-900 text-sm">${b.titre}</p><p class="text-xs text-gray-500">${b.auteur}</p></div>
+        </div>
+      </td>
+      <td class="px-5 py-4 hidden sm:table-cell"><span class="bg-green-100 text-xs font-medium px-2 py-1 rounded-lg" style="color:#16a34a">${b.categorie}</span></td>
+      <td class="px-5 py-4 font-bold text-sm" style="color:#ea580c">${b.prix.toLocaleString()} F</td>
+      <td class="px-5 py-4 text-right">
+        <div class="flex items-center justify-end gap-1">
+          <button onclick="editEbook('${b.id}')" class="p-2 hover:bg-green-50 rounded-lg transition text-gray-500 hover:text-primary">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <button onclick="deleteEbook('${b.id}')" class="p-2 hover:bg-red-50 rounded-lg transition text-gray-500 hover:text-red-500">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ===== FILE UPLOAD HANDLERS =====
+function handleImageFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('modal-img').value = e.target.result;
+    const img = document.getElementById('image-preview');
+    img.src = e.target.result; img.style.display='block';
+    document.getElementById('image-preview-wrap').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+function handleImageDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const dt=new DataTransfer(); dt.items.add(file);
+    document.getElementById('modal-img-file').files=dt.files;
+    handleImageFile(document.getElementById('modal-img-file'));
+  }
+}
+function handlePdfFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('modal-pdf').value = e.target.result;
+    document.getElementById('pdf-info').textContent = '\u2705 ' + file.name + ' (' + (file.size/1024/1024).toFixed(1) + ' Mo)';
+    document.getElementById('pdf-info').style.display='block';
+    document.getElementById('pdf-preview-wrap').style.display='none';
+  };
+  reader.readAsDataURL(file);
+}
+function handlePdfDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type==='application/pdf') {
+    const dt=new DataTransfer(); dt.items.add(file);
+    document.getElementById('modal-pdf-file').files=dt.files;
+    handlePdfFile(document.getElementById('modal-pdf-file'));
+  }
+}
+function resetModalFiles() {
+  document.getElementById('modal-img').value='';
+  document.getElementById('modal-pdf').value='';
+  document.getElementById('modal-img-file').value='';
+  document.getElementById('modal-pdf-file').value='';
+  document.getElementById('image-preview').style.display='none';
+  document.getElementById('image-preview-wrap').style.display='block';
+  document.getElementById('pdf-info').style.display='none';
+  document.getElementById('pdf-preview-wrap').style.display='block';
+}
+
+function showAddEbookModal() {
+  editingId=null;
+  document.getElementById('modal-title').textContent='Ajouter un ebook';
+  document.getElementById('modal-id').value='';
+  ['modal-titre','modal-auteur','modal-desc','modal-prix','modal-emoji'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('modal-cat').value='Roman';
+  document.getElementById('modal-pop').value='normal';
+  resetModalFiles();
+  document.getElementById('ebook-modal').classList.add('open');
+}
+
+function editEbook(id) {
+  const b=DB.ebooks.find(e=>e.id===id); if (!b) return;
+  editingId=id;
+  document.getElementById('modal-title').textContent="Modifier l'ebook";
+  document.getElementById('modal-id').value=id;
+  document.getElementById('modal-titre').value=b.titre;
+  document.getElementById('modal-auteur').value=b.auteur;
+  document.getElementById('modal-desc').value=b.desc||'';
+  document.getElementById('modal-prix').value=b.prix;
+  document.getElementById('modal-cat').value=b.categorie;
+  document.getElementById('modal-pop').value=b.popular?'popular':b.isNew?'new':'normal';
+  document.getElementById('modal-emoji').value=b.emoji||'';
+  resetModalFiles();
+  if (b.image) {
+    document.getElementById('modal-img').value=b.image;
+    const img=document.getElementById('image-preview');
+    img.src=b.image; img.style.display='block';
+    document.getElementById('image-preview-wrap').style.display='none';
+  }
+  if (b.pdf) {
+    document.getElementById('modal-pdf').value=b.pdf;
+    document.getElementById('pdf-info').textContent='\u2705 PDF déjà chargé';
+    document.getElementById('pdf-info').style.display='block';
+    document.getElementById('pdf-preview-wrap').style.display='none';
+  }
+  document.getElementById('ebook-modal').classList.add('open');
+}
+
+function deleteEbook(id) {
+  if (!confirm('Supprimer cet ebook ?')) return;
+  DB.ebooks=DB.ebooks.filter(e=>e.id!==id); saveEbooks(); renderAdmin(); showNotif('Ebook supprimé');
+}
+
+function saveEbook() {
+  const titre=document.getElementById('modal-titre').value.trim();
+  const auteur=document.getElementById('modal-auteur').value.trim();
+  const prix=parseInt(document.getElementById('modal-prix').value);
+  if (!titre||!auteur||!prix) { alert('Titre, auteur et prix sont requis.'); return; }
+  const type=document.getElementById('modal-pop').value;
+  const ebook = {
+    id: editingId||'e'+Date.now(),
+    titre, auteur,
+    desc:document.getElementById('modal-desc').value.trim(),
+    prix, categorie:document.getElementById('modal-cat').value,
+    popular:type==='popular', isNew:type==='new',
+    note:4.5,
+    image:document.getElementById('modal-img').value||'',
+    pdf:document.getElementById('modal-pdf').value||'',
+    emoji:document.getElementById('modal-emoji').value.trim()||'\ud83d\udcda',
+    date:new Date().toISOString()
+  };
+  if (editingId) { const idx=DB.ebooks.findIndex(e=>e.id===editingId); DB.ebooks[idx]=ebook; showNotif('Ebook modifié \u2713'); }
+  else { DB.ebooks.unshift(ebook); showNotif('Ebook ajouté \u2713'); }
+  saveEbooks(); closeModal(); renderAdmin();
+}
+
+function closeModal() { document.getElementById('ebook-modal').classList.remove('open'); }
+
+// ===== NOTIFICATION =====
+function showNotif(msg) {
+  document.getElementById('notif-text').textContent = msg;
+  const el = document.getElementById('notif');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ===== INIT =====
+updateAuthUI();
+updateCartBadge();
+renderHome();
+</script>
+</body>
+</html>
