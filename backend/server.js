@@ -7,21 +7,30 @@ require('dotenv').config();
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, '../frontend')));
 
+// Routes API
 app.use('/api/auth',   require('./routes/auth'));
 app.use('/api/ebooks', require('./routes/ebooks'));
 app.use('/api/users',  require('./routes/users'));
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../frontend/index.html')));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'GALSEN EBOOK API running' }));
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/galsen-ebook')
-  .then(() => {
-    console.log('✅ MongoDB connecté');
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));
-  })
-  .catch(err => { console.error('❌ MongoDB:', err.message); process.exit(1); });
+// Connexion MongoDB
+const connectDB = async () => {
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/galsen-ebook');
+  }
+};
+connectDB().catch(err => console.error('MongoDB:', err.message));
+
+// Pour lancement local
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));
+}
+
+// Export pour Vercel
+module.exports = app;
