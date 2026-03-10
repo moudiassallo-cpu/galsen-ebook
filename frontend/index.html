@@ -666,7 +666,7 @@
       <div>
         <h4 class="font-semibold mb-4 text-sm uppercase tracking-wider text-gray-300">Contact</h4>
         <div class="space-y-2 text-sm text-gray-400">
-          <p>📧 <span id="footer-email">contact@galsenebook.sn</span></p>
+          <p>📧 <span id="footer-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="11727e7f657072655176707d62747f74737e7e7a3f627f">[email&#160;protected]</a></span></p>
           <p>📱 <span id="footer-phone">+221 77 000 00 00</span></p>
           <p>📍 <span id="footer-address">Dakar, Sénégal</span></p>
         </div>
@@ -678,39 +678,39 @@
   </div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-// ===== DATA =====
+<script>
+// ===== CONFIG API =====
+const API_URL = 'https://galsen-ebook.vercel.app/api';
+
+// ===== DATA LOCAL =====
 let DB = {
-  users: JSON.parse(localStorage.getItem('ge_users') || '[]'),
-  ebooks: JSON.parse(localStorage.getItem('ge_ebooks') || 'null'),
+  ebooks: [],
   cart: JSON.parse(localStorage.getItem('ge_cart') || '[]'),
-  purchases: JSON.parse(localStorage.getItem('ge_purchases') || '[]'),
   currentUser: JSON.parse(localStorage.getItem('ge_current') || 'null'),
+  purchases: JSON.parse(localStorage.getItem('ge_purchases') || '[]'),
 };
-
-if (!DB.users.find(u => u.email === 'admin@galsen.com')) {
-  DB.users.push({ id: 'admin', name: 'Administrateur', email: 'admin@galsen.com', password: 'admin123', role: 'admin', created: new Date().toISOString() });
-  saveUsers();
-}
-
-const defaultEbooks = [
-  { id:'e1', titre:"L'Aventure Ambiguë", auteur:'Cheikh Hamidou Kane', desc:"Un roman philosophique profond explorant l'identité africaine entre tradition et modernité.", prix:2500, categorie:'Roman', emoji:'📖', popular:true, isNew:false, note:4.8 },
-  { id:'e2', titre:'Le Roi Miraculé', auteur:'Mongo Beti', desc:"Un roi africain converti de force au christianisme recouvre sa santé et sa conscience.", prix:1800, categorie:'Roman', emoji:'👑', popular:true, isNew:false, note:4.5 },
-  { id:'e3', titre:'Réussir en Afrique', auteur:'Ibrahima Fall', desc:'Guide pratique pour entrepreneurs africains souhaitant lancer et développer leur business.', prix:4500, categorie:'Business', emoji:'💼', popular:true, isNew:false, note:4.9 },
-  { id:'e4', titre:'Mindset Gagnant', auteur:'Fatou Diop', desc:"Développez un état d'esprit de gagnant et transformez votre vie grâce à des techniques éprouvées.", prix:3200, categorie:'Développement personnel', emoji:'🧠', popular:false, isNew:true, note:4.7 },
-  { id:'e5', titre:'Histoire du Sénégal', auteur:'Mamadou Diouf', desc:"Une fresque historique complète du Sénégal, des royaumes précoloniaux à l'indépendance.", prix:3800, categorie:'Histoire', emoji:'🏛️', popular:false, isNew:true, note:4.6 },
-  { id:'e6', titre:"L'Islam en Afrique", auteur:'Serigne Ba', desc:"Histoire et influence de l'Islam dans la construction des sociétés africaines.", prix:2900, categorie:'Religion', emoji:'🕌', popular:false, isNew:true, note:4.4 },
-  { id:'e7', titre:'Finance Personnelle', auteur:'Aissatou Sy', desc:'Maîtrisez vos finances, économisez, investissez et bâtissez votre patrimoine en Afrique.', prix:3500, categorie:'Business', emoji:'💰', popular:true, isNew:false, note:4.8 },
-  { id:'e8', titre:'Code & Innovation', auteur:'Oumar Tech', desc:'Initiation à la programmation et à l\'entrepreneuriat tech pour les jeunes africains.', prix:5000, categorie:'Science', emoji:'💻', popular:false, isNew:true, note:4.9 },
-];
-if (!DB.ebooks) { DB.ebooks = defaultEbooks; saveEbooks(); }
 
 let currentFilter = 'all', currentSort = 'default', editingId = null, selMethod = '';
 
-function saveUsers()     { localStorage.setItem('ge_users', JSON.stringify(DB.users)); }
-function saveEbooks()    { localStorage.setItem('ge_ebooks', JSON.stringify(DB.ebooks)); }
-function saveCart()      { localStorage.setItem('ge_cart', JSON.stringify(DB.cart)); }
-function savePurchases() { localStorage.setItem('ge_purchases', JSON.stringify(DB.purchases)); }
+// ===== API HELPER =====
+async function api(path, method='GET', body=null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (DB.currentUser?.token) opts.headers['Authorization'] = 'Bearer ' + DB.currentUser.token;
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(API_URL + path, opts);
+    return await res.json();
+  } catch(e) {
+    console.error('API error:', e);
+    return null;
+  }
+}
+
+function saveCart()       { localStorage.setItem('ge_cart', JSON.stringify(DB.cart)); }
+function savePurchases()  { localStorage.setItem('ge_purchases', JSON.stringify(DB.purchases)); }
 function saveCurrentUser(){ localStorage.setItem('ge_current', JSON.stringify(DB.currentUser)); }
 
 // ===== NAVIGATION =====
@@ -731,19 +731,35 @@ function showPage(page) {
 }
 
 // ===== AUTH =====
-function loginUser() {
+async function loginUser() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-password').value;
   const err = document.getElementById('login-error');
   err.classList.add('hidden');
-  const user = DB.users.find(u => u.email === email && u.password === pass);
-  if (!user) { err.textContent = 'Email ou mot de passe incorrect.'; err.classList.remove('hidden'); return; }
-  DB.currentUser = user; saveCurrentUser(); updateAuthUI();
-  showNotif('Bienvenue, ' + user.name + ' ! 👋');
-  showPage(user.role === 'admin' ? 'admin' : 'home');
+
+  // Essai via API
+  const data = await api('/auth/login', 'POST', { email, password: pass });
+  if (data && data.token) {
+    DB.currentUser = { ...data.user, token: data.token };
+    saveCurrentUser(); updateAuthUI();
+    showNotif('Bienvenue, ' + data.user.name + ' ! 👋');
+    showPage(data.user.role === 'admin' ? 'admin' : 'home');
+    return;
+  }
+
+  // Fallback local (admin demo)
+  if (email === 'admin@galsen.com' && pass === 'admin123') {
+    DB.currentUser = { id:'admin', name:'Administrateur', email, role:'admin', token:'' };
+    saveCurrentUser(); updateAuthUI();
+    showNotif('Bienvenue Administrateur ! 👋');
+    showPage('admin'); return;
+  }
+
+  err.textContent = data?.message || 'Email ou mot de passe incorrect.';
+  err.classList.remove('hidden');
 }
 
-function registerUser() {
+async function registerUser() {
   const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
   const pass = document.getElementById('reg-password').value;
@@ -752,13 +768,17 @@ function registerUser() {
   err.classList.add('hidden');
   if (!name||!email||!pass) { err.textContent='Tous les champs sont requis.'; err.classList.remove('hidden'); return; }
   if (pass !== conf) { err.textContent='Les mots de passe ne correspondent pas.'; err.classList.remove('hidden'); return; }
-  if (pass.length < 6) { err.textContent='Le mot de passe doit faire au moins 6 caractères.'; err.classList.remove('hidden'); return; }
-  if (DB.users.find(u=>u.email===email)) { err.textContent='Cet email est déjà utilisé.'; err.classList.remove('hidden'); return; }
-  const user = { id:'u'+Date.now(), name, email, password:pass, role:'user', created:new Date().toISOString() };
-  DB.users.push(user); saveUsers();
-  DB.currentUser = user; saveCurrentUser(); updateAuthUI();
-  showNotif('Compte créé avec succès ! 🎉');
-  showPage('home');
+  if (pass.length < 6) { err.textContent='Minimum 6 caractères.'; err.classList.remove('hidden'); return; }
+
+  const data = await api('/auth/register', 'POST', { name, email, password: pass });
+  if (data && data.token) {
+    DB.currentUser = { ...data.user, token: data.token };
+    saveCurrentUser(); updateAuthUI();
+    showNotif('Compte créé avec succès ! 🎉');
+    showPage('home'); return;
+  }
+  err.textContent = data?.message || 'Erreur lors de la création du compte.';
+  err.classList.remove('hidden');
 }
 
 function logout() {
@@ -785,25 +805,28 @@ document.addEventListener('click', e => { if (!e.target.closest('#user-menu')) d
 
 // ===== EBOOK CARD =====
 function ebookCard(b, badge='') {
-  const inCart = DB.cart.find(c => c.id === b.id);
+  const inCart = DB.cart.find(c => c.id === (b._id||b.id));
+  const id = b._id || b.id;
   return `
     <div class="ebook-card bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 flex flex-col">
-      <div class="relative cursor-pointer" onclick="showDetail('${b.id}')">
-        <div class="aspect-ratio" style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);display:flex;align-items:center;justify-content:center;overflow:hidden">
-          ${b.image ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:64px;align-items:center;justify-content:center;width:100%;height:100%">${b.emoji||'📚'}</span>` : `<span style="font-size:64px">${b.emoji||'📚'}</span>`}
+      <div class="relative cursor-pointer" onclick="showDetail('${id}')">
+        <div style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);display:flex;align-items:center;justify-content:center;overflow:hidden">
+          ${b.image_couverture||b.image
+            ? `<img src="${b.image_couverture||b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:64px;align-items:center;justify-content:center;width:100%;height:100%">${b.emoji||'📚'}</span>`
+            : `<span style="font-size:64px">${b.emoji||'📚'}</span>`}
         </div>
         ${badge ? `<span class="absolute top-2 left-2 badge-${badge} text-white text-xs font-bold px-2 py-0.5 rounded-lg">${badge==='new'?'NOUVEAU':'TOP'}</span>` : ''}
         <div class="absolute top-2 right-2 bg-white/90 rounded-lg px-1.5 py-0.5 flex items-center gap-0.5">
-          <span class="stars text-xs">★</span><span class="text-xs font-bold text-gray-700">${b.note}</span>
+          <span class="stars text-xs">★</span><span class="text-xs font-bold text-gray-700">${b.note||4.5}</span>
         </div>
       </div>
       <div class="p-3 flex flex-col flex-1">
         <span class="text-xs font-medium mb-1" style="color:#16a34a">${b.categorie}</span>
-        <h3 class="font-semibold text-gray-900 text-sm leading-snug mb-0.5 cursor-pointer hover:text-primary" onclick="showDetail('${b.id}')" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${b.titre}</h3>
+        <h3 class="font-semibold text-gray-900 text-sm leading-snug mb-0.5 cursor-pointer hover:text-primary" onclick="showDetail('${id}')" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${b.titre}</h3>
         <p class="text-xs text-gray-500 mb-3">${b.auteur}</p>
         <div class="flex items-center justify-between mt-auto">
           <span class="font-bold text-sm" style="color:#ea580c">${b.prix.toLocaleString()} F</span>
-          <button onclick="addToCart('${b.id}')" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition" style="${inCart?'background:#dcfce7;color:#16a34a':'background:#16a34a;color:white'}">
+          <button onclick="addToCart('${id}')" class="text-xs font-semibold px-3 py-1.5 rounded-lg transition" style="${inCart?'background:#dcfce7;color:#16a34a':'background:#16a34a;color:white'}">
             ${inCart ? '✓ Ajouté' : '+ Panier'}
           </button>
         </div>
@@ -812,16 +835,21 @@ function ebookCard(b, badge='') {
 }
 
 // ===== HOME =====
-function renderHome() {
+async function renderHome() {
+  const ebooks = await api('/ebooks');
+  if (ebooks && ebooks.length) {
+    DB.ebooks = ebooks;
+  }
   const popular = DB.ebooks.filter(e=>e.popular).slice(0,4);
   const newBooks = DB.ebooks.filter(e=>e.isNew).slice(0,4);
-  document.getElementById('popular-grid').innerHTML = popular.map(e=>ebookCard(e,'hot')).join('');
-  document.getElementById('new-grid').innerHTML = newBooks.map(e=>ebookCard(e,'new')).join('');
+  document.getElementById('popular-grid').innerHTML = popular.length ? popular.map(e=>ebookCard(e,'hot')).join('') : '<p class="text-gray-400 col-span-4 text-center py-8">Aucun ebook populaire pour l\'instant.</p>';
+  document.getElementById('new-grid').innerHTML = newBooks.length ? newBooks.map(e=>ebookCard(e,'new')).join('') : '<p class="text-gray-400 col-span-4 text-center py-8">Aucune nouveauté pour l\'instant.</p>';
 }
 
 // ===== CATALOGUE =====
-function renderCatalogue(filter=currentFilter, sort=currentSort) {
-  let books = [...DB.ebooks];
+async function renderCatalogue(filter=currentFilter, sort=currentSort) {
+  let books = DB.ebooks.length ? [...DB.ebooks] : (await api('/ebooks') || []);
+  DB.ebooks = books;
   if (filter !== 'all') books = books.filter(b=>b.categorie===filter);
   if (sort==='price-asc') books.sort((a,b)=>a.prix-b.prix);
   if (sort==='price-desc') books.sort((a,b)=>b.prix-a.prix);
@@ -838,8 +866,6 @@ function filterCatalogue(cat) {
     const active = btn.dataset.cat === cat;
     btn.style.background = active ? '#16a34a' : '';
     btn.style.color = active ? 'white' : '';
-    btn.className = btn.className.replace(/bg-primary\s*/g,'').replace(/text-white\s*/g,'');
-    if (active) { btn.classList.add('bg-primary','text-white'); }
   });
   renderCatalogue();
 }
@@ -853,41 +879,42 @@ function searchEbooks(q) {
   const books = DB.ebooks.filter(b=>b.titre.toLowerCase().includes(ql)||b.auteur.toLowerCase().includes(ql)||b.categorie.toLowerCase().includes(ql));
   document.getElementById('catalogue-grid').innerHTML = books.map(e=>ebookCard(e)).join('');
   document.getElementById('no-results').classList.toggle('hidden', books.length>0);
-  if (document.getElementById('page-catalogue').classList.contains('active')) return;
-  showPage('catalogue');
+  if (!document.getElementById('page-catalogue').classList.contains('active')) showPage('catalogue');
 }
 
 function toggleSearch() { const s=document.getElementById('search-bar'); s.classList.toggle('hidden'); if(!s.classList.contains('hidden')) document.getElementById('search-input').focus(); }
 function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
 
 // ===== DETAIL =====
-function showDetail(id) {
-  const b = DB.ebooks.find(x=>x.id===id);
+async function showDetail(id) {
+  let b = DB.ebooks.find(x=>(x._id||x.id)===id);
+  if (!b) { b = await api('/ebooks/'+id); }
   if (!b) return;
-  const inCart = DB.cart.find(c=>c.id===id);
+  const bid = b._id || b.id;
+  const inCart = DB.cart.find(c=>c.id===bid);
   document.getElementById('detail-content').innerHTML = `
     <button onclick="history.back()" class="flex items-center gap-2 text-gray-500 hover:text-primary mb-6 text-sm font-medium">← Retour</button>
     <div class="grid sm:grid-cols-5 gap-8">
       <div class="sm:col-span-2">
         <div style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.1);overflow:hidden">
-          ${b.image ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:96px;align-items:center;justify-content:center">${b.emoji||'📚'}</span>` : `<span style="font-size:96px">${b.emoji||'📚'}</span>`}
+          ${b.image_couverture||b.image ? `<img src="${b.image_couverture||b.image}" style="width:100%;height:100%;object-fit:cover"/>` : `<span style="font-size:96px">${b.emoji||'📚'}</span>`}
         </div>
       </div>
       <div class="sm:col-span-3">
         <span class="inline-block bg-green-100 text-sm font-semibold px-3 py-1 rounded-full mb-3" style="color:#16a34a">${b.categorie}</span>
         <h1 class="font-display text-3xl font-bold text-gray-900 mb-2">${b.titre}</h1>
         <p class="text-gray-500 mb-4">Par <strong class="text-gray-700">${b.auteur}</strong></p>
-        <div class="flex items-center gap-2 mb-5"><span class="stars">★★★★★</span><span class="font-semibold text-gray-700">${b.note}/5</span></div>
-        <p class="text-gray-600 leading-relaxed mb-8">${b.desc||'Aucune description.'}</p>
+        <div class="flex items-center gap-2 mb-5"><span class="stars">★★★★★</span><span class="font-semibold text-gray-700">${b.note||4.5}/5</span></div>
+        <p class="text-gray-600 leading-relaxed mb-8">${b.desc||b.description||'Aucune description.'}</p>
         <div class="bg-gray-50 rounded-2xl p-5 mb-6">
           <span class="text-3xl font-bold" style="color:#ea580c">${b.prix.toLocaleString()} FCFA</span>
           <p class="text-gray-500 text-sm mt-1">Paiement sécurisé via Wave ou Orange Money</p>
         </div>
         <div class="flex gap-3 flex-wrap">
-          <button id="cart-btn-${b.id}" onclick="addToCartFromDetail('${b.id}')" class="flex-1 font-bold py-3.5 rounded-xl transition" style="${inCart?'background:#dcfce7;color:#16a34a':'background:#16a34a;color:white'}">
+          <button id="cart-btn-${bid}" onclick="addToCartFromDetail('${bid}')" class="flex-1 font-bold py-3.5 rounded-xl transition" style="${inCart?'background:#dcfce7;color:#16a34a':'background:#16a34a;color:white'}">
             ${inCart?'✓ Dans le panier':'🛒 Ajouter au panier'}
           </button>
-          <button onclick="addToCart('${b.id}');showPage('payment')" class="flex-1 font-bold py-3.5 rounded-xl transition text-white" style="background:#ea580c">Acheter maintenant →</button>
+          <button onclick="addToCart('${bid}');showPage('payment')" class="flex-1 font-bold py-3.5 rounded-xl transition text-white" style="background:#ea580c">Acheter maintenant →</button>
         </div>
       </div>
     </div>`;
@@ -902,9 +929,9 @@ function addToCartFromDetail(id) {
 
 // ===== CART =====
 function addToCart(id) {
-  const b = DB.ebooks.find(x=>x.id===id);
+  const b = DB.ebooks.find(x=>(x._id||x.id)===id);
   if (!b||DB.cart.find(c=>c.id===id)) return;
-  DB.cart.push({ id:b.id, titre:b.titre, prix:b.prix, emoji:b.emoji, auteur:b.auteur });
+  DB.cart.push({ id, titre:b.titre, prix:b.prix, emoji:b.emoji, auteur:b.auteur, image:b.image_couverture||b.image||'', pdf:b.fichier_pdf||b.pdf||'' });
   saveCart(); showNotif(b.titre+' ajouté au panier ✓'); updateCartBadge();
   const activePage = document.querySelector('.page.active')?.id;
   if (activePage==='page-home') renderHome();
@@ -942,18 +969,14 @@ function renderCartItems() {
 
 function openCart() { document.getElementById('cart-sidebar').classList.add('open'); document.getElementById('cart-overlay').classList.add('show'); renderCartItems(); }
 function closeCart() { document.getElementById('cart-sidebar').classList.remove('open'); document.getElementById('cart-overlay').classList.remove('show'); }
-
-function proceedToPayment() {
-  if (!DB.cart.length) { showNotif('Votre panier est vide'); return; }
-  closeCart(); showPage('payment');
-}
+function proceedToPayment() { if (!DB.cart.length) { showNotif('Votre panier est vide'); return; } closeCart(); showPage('payment'); }
 
 // ===== PAYMENT =====
 function initPaymentPage() {
   document.getElementById('pay-form').classList.add('hidden');
   document.querySelectorAll('.pay-card').forEach(c=>{ c.style.borderColor=''; c.style.background=''; });
   selMethod = '';
-  if (DB.currentUser) { document.getElementById('pay-name').value=DB.currentUser.name; document.getElementById('pay-email').value=DB.currentUser.email; }
+  if (DB.currentUser) { document.getElementById('pay-name').value=DB.currentUser.name||''; document.getElementById('pay-email').value=DB.currentUser.email||''; }
   else { document.getElementById('pay-name').value=''; document.getElementById('pay-email').value=''; }
   const total = DB.cart.reduce((s,i)=>s+i.prix,0);
   document.getElementById('pay-amount').value = total.toLocaleString()+' FCFA';
@@ -980,24 +1003,6 @@ function confirmPayment() {
     // ============================================================
     // WAVE API — COLLEZ VOTRE CODE ICI
     // ============================================================
-    // Exemple d'intégration Wave Checkout :
-    //
-    // const response = await fetch('https://api.wave.com/v1/checkout/sessions', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': 'Bearer VOTRE_CLE_API_WAVE_ICI',  // <-- COLLEZ VOTRE CLÉ API WAVE ICI
-    //     'Content-Type': 'application/json'
-    //   },
-    //   body: JSON.stringify({
-    //     amount: total,
-    //     currency: 'XOF',
-    //     error_url: window.location.href,
-    //     success_url: window.location.href + '?success=true',
-    //   })
-    // });
-    // const data = await response.json();
-    // window.location.href = data.wave_launch_url; // Redirige vers Wave
-    // ============================================================
     console.log('Wave API: total =', total, 'XOF, phone =', phone);
   }
 
@@ -1005,124 +1010,79 @@ function confirmPayment() {
     // ============================================================
     // ORANGE MONEY API — COLLEZ VOTRE CODE ICI
     // ============================================================
-    // Exemple d'intégration Orange Money :
-    //
-    // const response = await fetch('https://api.orange.com/orange-money-webpay/dev/v1/webpayment', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': 'Bearer VOTRE_TOKEN_ORANGE_MONEY_ICI',  // <-- COLLEZ VOTRE TOKEN ICI
-    //     'Content-Type': 'application/json'
-    //   },
-    //   body: JSON.stringify({
-    //     merchant_key: 'VOTRE_MERCHANT_KEY_ICI',  // <-- COLLEZ VOTRE MERCHANT KEY ICI
-    //     currency: 'OUV',
-    //     order_id: 'CMD_' + Date.now(),
-    //     amount: total,
-    //     return_url: window.location.href + '?success=true',
-    //     cancel_url: window.location.href,
-    //     notif_url: 'https://votre-backend.com/api/payment/notify',
-    //     lang: 'fr',
-    //     reference: 'GALSEN_' + Date.now(),
-    //   })
-    // });
-    // const data = await response.json();
-    // window.location.href = data.payment_url; // Redirige vers Orange Money
-    // ============================================================
     console.log('Orange Money API: total =', total, 'XOF, phone =', phone);
   }
 
-  // Enregistrement de la commande
+  // Sauvegarder les achats
   if (DB.currentUser) {
-    DB.purchases.push(...DB.cart.map(i=>({...i,userId:DB.currentUser.id,date:new Date().toISOString()})));
+    const newPurchases = DB.cart.map(i=>({...i, userId:DB.currentUser.id||DB.currentUser._id, date:new Date().toISOString()}));
+    DB.purchases.push(...newPurchases);
     savePurchases();
   }
+
   const prevRev = parseInt(localStorage.getItem('ge_revenue')||'0');
   const prevSales = parseInt(localStorage.getItem('ge_sales')||'0');
   localStorage.setItem('ge_revenue', prevRev + total);
   localStorage.setItem('ge_sales', prevSales + DB.cart.length);
 
-  // Préparer les boutons de téléchargement sur la page succès
-  const purchasedBooks = DB.cart.map(item => DB.ebooks.find(b=>b.id===item.id)).filter(Boolean);
-
+  const purchasedBooks = DB.cart.map(item => DB.ebooks.find(b=>(b._id||b.id)===item.id)).filter(Boolean);
   DB.cart=[]; saveCart(); updateCartBadge();
   showPage('success');
 
-  // Afficher les boutons de téléchargement immédiat
   const dlZone = document.getElementById('success-downloads');
   if (dlZone) {
-    if (purchasedBooks.length === 0) {
-      dlZone.innerHTML = '';
-    } else {
-      dlZone.innerHTML = purchasedBooks.map(b => `
-        <div class="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
-          <div class="flex items-center gap-3">
-            <div style="width:44px;height:56px;background:linear-gradient(135deg,#f0fdf4,#fff7ed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${b.emoji||'📚'}</div>
-            <div class="text-left">
-              <p class="font-semibold text-gray-900 text-sm">${b.titre}</p>
-              <p class="text-xs text-gray-500">${b.auteur}</p>
-            </div>
+    dlZone.innerHTML = purchasedBooks.map(b => `
+      <div class="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-sm">
+        <div class="flex items-center gap-3">
+          <div style="width:44px;height:56px;background:linear-gradient(135deg,#f0fdf4,#fff7ed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${b.emoji||'📚'}</div>
+          <div class="text-left">
+            <p class="font-semibold text-gray-900 text-sm">${b.titre}</p>
+            <p class="text-xs text-gray-500">${b.auteur}</p>
           </div>
-          ${b.pdf
-            ? `<button onclick="downloadPdf(DB.ebooks.find(x=>x.id==='${b.id}'))"
-                class="shrink-0 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1"
-                style="background:#16a34a">
-                📥 Télécharger
-               </button>`
-            : `<span class="text-xs text-gray-400">Pas de PDF</span>`
-          }
         </div>
-      `).join('');
+        ${(b.fichier_pdf||b.pdf)
+          ? `<button onclick="downloadPdf(DB.ebooks.find(x=>(x._id||x.id)==='${b._id||b.id}'))" class="shrink-0 text-white text-xs font-bold px-4 py-2 rounded-xl" style="background:#16a34a">📥 Télécharger</button>`
+          : `<span class="text-xs text-gray-400">Pas de PDF</span>`}
+      </div>`).join('');
+    if (purchasedBooks.length === 1 && (purchasedBooks[0].fichier_pdf||purchasedBooks[0].pdf)) {
+      setTimeout(() => downloadPdf(purchasedBooks[0]), 800);
     }
-  }
-
-  // Téléchargement automatique si 1 seul livre
-  if (purchasedBooks.length === 1 && purchasedBooks[0].pdf) {
-    setTimeout(() => downloadPdf(purchasedBooks[0]), 800);
   }
 }
 
-// ===== MY EBOOKS =====
-// Téléchargement PDF
+// ===== DOWNLOAD PDF =====
 function downloadPdf(book) {
-  if (!book.pdf) {
-    showNotif('Aucun PDF disponible pour cet ebook');
-    return;
-  }
+  const pdfUrl = book.fichier_pdf || book.pdf;
+  if (!pdfUrl) { showNotif('Aucun PDF disponible'); return; }
   const link = document.createElement('a');
-  link.href = book.pdf;
-  link.download = book.titre.replace(/[^a-z0-9]/gi, '_') + '.pdf';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  link.href = pdfUrl;
+  link.download = book.titre.replace(/[^a-z0-9]/gi,'_') + '.pdf';
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
   showNotif('Téléchargement de "' + book.titre + '" démarré 📥');
 }
 
+// ===== MY EBOOKS =====
 function renderMyEbooks() {
   if (!DB.currentUser) { showPage('login'); return; }
-  const bought = DB.purchases.filter(p=>p.userId===DB.currentUser.id);
+  const uid = DB.currentUser.id || DB.currentUser._id;
+  const bought = DB.purchases.filter(p=>p.userId===uid);
   const ids = [...new Set(bought.map(p=>p.id))];
-  const books = ids.map(id=>DB.ebooks.find(b=>b.id===id)).filter(Boolean);
+  const books = ids.map(id=>DB.ebooks.find(b=>(b._id||b.id)===id)).filter(Boolean);
   const grid=document.getElementById('my-ebooks-grid'), empty=document.getElementById('my-ebooks-empty');
   if (!books.length) { grid.innerHTML=''; empty.classList.remove('hidden'); }
   else {
     empty.classList.add('hidden');
     grid.innerHTML = books.map(b=>`
       <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-        <div style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="showDetail('${b.id}')">
-          ${b.image
-            ? `<img src="${b.image}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/><span style="display:none;font-size:56px;align-items:center;justify-content:center;width:100%;height:100%">${b.emoji||'\u{1F4DA}'}</span>`
-            : `<span style="font-size:56px">${b.emoji||'\u{1F4DA}'}</span>`
-          }
+        <div style="aspect-ratio:3/4;background:linear-gradient(135deg,#f0fdf4,#fff7ed);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden" onclick="showDetail('${b._id||b.id}')">
+          ${b.image_couverture||b.image ? `<img src="${b.image_couverture||b.image}" style="width:100%;height:100%;object-fit:cover"/>` : `<span style="font-size:56px">${b.emoji||'📚'}</span>`}
         </div>
         <div class="p-3">
-          <h3 class="font-semibold text-gray-900 text-sm" style="display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden">${b.titre}</h3>
+          <h3 class="font-semibold text-gray-900 text-sm">${b.titre}</h3>
           <p class="text-xs text-gray-500 mb-2">${b.auteur}</p>
-          ${b.pdf
-            ? `<button onclick="downloadPdf(DB.ebooks.find(x=>x.id==='${b.id}'))" class="w-full text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1" style="background:#16a34a">
-                📥 Télécharger le PDF
-               </button>`
-            : `<div class="w-full text-center text-xs py-2 rounded-lg" style="background:#f3f4f6;color:#9ca3af">PDF non disponible</div>`
-          }
+          ${(b.fichier_pdf||b.pdf)
+            ? `<button onclick="downloadPdf(DB.ebooks.find(x=>(x._id||x.id)==='${b._id||b.id}'))" class="w-full text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1" style="background:#16a34a">📥 Télécharger le PDF</button>`
+            : `<div class="w-full text-center text-xs py-2 rounded-lg" style="background:#f3f4f6;color:#9ca3af">PDF non disponible</div>`}
         </div>
       </div>`).join('');
   }
@@ -1140,25 +1100,37 @@ function renderProfile() {
   document.getElementById('profile-email-input').value=u.email;
 }
 
-function updateProfile() {
+async function updateProfile() {
   const name=document.getElementById('profile-name-input').value.trim();
   const email=document.getElementById('profile-email-input').value.trim();
   if (!name||!email) return;
-  const idx=DB.users.findIndex(u=>u.id===DB.currentUser.id);
-  DB.users[idx].name=name; DB.users[idx].email=email;
-  DB.currentUser.name=name; DB.currentUser.email=email;
-  saveUsers(); saveCurrentUser(); renderProfile(); updateAuthUI();
-  showNotif('Profil mis à jour ✓');
+  const data = await api('/users/me', 'PUT', { name, email });
+  if (data && data._id) {
+    DB.currentUser = { ...DB.currentUser, name:data.name, email:data.email };
+    saveCurrentUser(); renderProfile(); updateAuthUI();
+    showNotif('Profil mis à jour ✓');
+  } else {
+    // fallback local
+    DB.currentUser.name=name; DB.currentUser.email=email;
+    saveCurrentUser(); renderProfile(); updateAuthUI();
+    showNotif('Profil mis à jour ✓');
+  }
 }
 
 // ===== ADMIN =====
-function renderAdmin() {
-  document.getElementById('stat-ebooks').textContent=DB.ebooks.length;
-  document.getElementById('stat-users').textContent=DB.users.filter(u=>u.role!=='admin').length;
+async function renderAdmin() {
+  const ebooks = await api('/ebooks') || DB.ebooks;
+  DB.ebooks = ebooks;
+  document.getElementById('stat-ebooks').textContent=ebooks.length;
   document.getElementById('stat-sales').textContent=localStorage.getItem('ge_sales')||0;
   const rev=parseInt(localStorage.getItem('ge_revenue')||'0');
   document.getElementById('stat-revenue').textContent=rev.toLocaleString()+' F';
-  document.getElementById('admin-table').innerHTML=DB.ebooks.map(b=>`
+
+  // Compte les users via API
+  const users = await api('/users') || [];
+  document.getElementById('stat-users').textContent=users.filter ? users.filter(u=>u.role!=='admin').length : 0;
+
+  document.getElementById('admin-table').innerHTML=ebooks.map(b=>`
     <tr class="hover:bg-gray-50 transition">
       <td class="px-5 py-4">
         <div class="flex items-center gap-3">
@@ -1170,10 +1142,10 @@ function renderAdmin() {
       <td class="px-5 py-4 font-bold text-sm" style="color:#ea580c">${b.prix.toLocaleString()} F</td>
       <td class="px-5 py-4 text-right">
         <div class="flex items-center justify-end gap-1">
-          <button onclick="editEbook('${b.id}')" class="p-2 hover:bg-green-50 rounded-lg transition text-gray-500 hover:text-primary">
+          <button onclick="editEbook('${b._id||b.id}')" class="p-2 hover:bg-green-50 rounded-lg transition text-gray-500">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           </button>
-          <button onclick="deleteEbook('${b.id}')" class="p-2 hover:bg-red-50 rounded-lg transition text-gray-500 hover:text-red-500">
+          <button onclick="deleteEbook('${b._id||b.id}')" class="p-2 hover:bg-red-50 rounded-lg transition text-gray-500">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
           </button>
         </div>
@@ -1207,7 +1179,7 @@ function handlePdfFile(input) {
   const reader = new FileReader();
   reader.onload = e => {
     document.getElementById('modal-pdf').value = e.target.result;
-    document.getElementById('pdf-info').textContent = '\u2705 ' + file.name + ' (' + (file.size/1024/1024).toFixed(1) + ' Mo)';
+    document.getElementById('pdf-info').textContent = '✅ ' + file.name + ' (' + (file.size/1024/1024).toFixed(1) + ' Mo)';
     document.getElementById('pdf-info').style.display='block';
     document.getElementById('pdf-preview-wrap').style.display='none';
   };
@@ -1245,70 +1217,70 @@ function showAddEbookModal() {
 }
 
 function editEbook(id) {
-  const b=DB.ebooks.find(e=>e.id===id); if (!b) return;
+  const b=DB.ebooks.find(e=>(e._id||e.id)===id); if (!b) return;
   editingId=id;
   document.getElementById('modal-title').textContent="Modifier l'ebook";
   document.getElementById('modal-id').value=id;
   document.getElementById('modal-titre').value=b.titre;
   document.getElementById('modal-auteur').value=b.auteur;
-  document.getElementById('modal-desc').value=b.desc||'';
+  document.getElementById('modal-desc').value=b.desc||b.description||'';
   document.getElementById('modal-prix').value=b.prix;
   document.getElementById('modal-cat').value=b.categorie;
   document.getElementById('modal-pop').value=b.popular?'popular':b.isNew?'new':'normal';
   document.getElementById('modal-emoji').value=b.emoji||'';
   resetModalFiles();
-  if (b.image) {
-    document.getElementById('modal-img').value=b.image;
+  if (b.image_couverture||b.image) {
+    document.getElementById('modal-img').value=b.image_couverture||b.image;
     const img=document.getElementById('image-preview');
-    img.src=b.image; img.style.display='block';
+    img.src=b.image_couverture||b.image; img.style.display='block';
     document.getElementById('image-preview-wrap').style.display='none';
   }
-  if (b.pdf) {
-    document.getElementById('modal-pdf').value=b.pdf;
-    document.getElementById('pdf-info').textContent='\u2705 PDF déjà chargé';
+  if (b.fichier_pdf||b.pdf) {
+    document.getElementById('modal-pdf').value=b.fichier_pdf||b.pdf;
+    document.getElementById('pdf-info').textContent='✅ PDF déjà chargé';
     document.getElementById('pdf-info').style.display='block';
     document.getElementById('pdf-preview-wrap').style.display='none';
   }
   document.getElementById('ebook-modal').classList.add('open');
 }
 
-function deleteEbook(id) {
+async function deleteEbook(id) {
   if (!confirm('Supprimer cet ebook ?')) return;
-  DB.ebooks=DB.ebooks.filter(e=>e.id!==id); saveEbooks(); renderAdmin(); showNotif('Ebook supprimé');
+  await api('/ebooks/'+id, 'DELETE');
+  DB.ebooks=DB.ebooks.filter(e=>(e._id||e.id)!==id);
+  renderAdmin(); showNotif('Ebook supprimé');
 }
 
-function saveEbook() {
+async function saveEbook() {
   const titre=document.getElementById('modal-titre').value.trim();
   const auteur=document.getElementById('modal-auteur').value.trim();
   const prix=parseInt(document.getElementById('modal-prix').value);
   if (!titre||!auteur||!prix) { alert('Titre, auteur et prix sont requis.'); return; }
   const type=document.getElementById('modal-pop').value;
   const ebook = {
-    id: editingId||'e'+Date.now(),
     titre, auteur,
-    desc:document.getElementById('modal-desc').value.trim(),
+    description:document.getElementById('modal-desc').value.trim(),
     prix, categorie:document.getElementById('modal-cat').value,
     popular:type==='popular', isNew:type==='new',
     note:4.5,
-    image:document.getElementById('modal-img').value||'',
-    pdf:document.getElementById('modal-pdf').value||'',
-    emoji:document.getElementById('modal-emoji').value.trim()||'\ud83d\udcda',
-    date:new Date().toISOString()
+    image_couverture:document.getElementById('modal-img').value||'',
+    fichier_pdf:document.getElementById('modal-pdf').value||'',
+    emoji:document.getElementById('modal-emoji').value.trim()||'📚',
   };
-  if (editingId) { const idx=DB.ebooks.findIndex(e=>e.id===editingId); DB.ebooks[idx]=ebook; showNotif('Ebook modifié \u2713'); }
-  else { DB.ebooks.unshift(ebook); showNotif('Ebook ajouté \u2713'); }
-  saveEbooks(); closeModal(); renderAdmin();
+
+  let result;
+  if (editingId) {
+    result = await api('/ebooks/'+editingId, 'PUT', ebook);
+    showNotif('Ebook modifié ✓');
+  } else {
+    result = await api('/ebooks', 'POST', ebook);
+    showNotif('Ebook ajouté ✓');
+  }
+  closeModal();
+  renderAdmin();
 }
 
 function closeModal() { document.getElementById('ebook-modal').classList.remove('open'); }
-
-// ===== NOTIFICATION =====
-function showNotif(msg) {
-  document.getElementById('notif-text').textContent = msg;
-  const el = document.getElementById('notif');
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
-}
 
 // ===== PARAMÈTRES DU SITE =====
 function loadSettings() {
@@ -1322,30 +1294,26 @@ function loadSettings() {
     year: '2025'
   };
   const cfg = { ...defaults, ...s };
-
-  // Mettre à jour le footer
-  const fe = document.getElementById('footer-email');
-  const fp = document.getElementById('footer-phone');
-  const fa = document.getElementById('footer-address');
-  const fs = document.getElementById('footer-sitename');
-  const fsl = document.getElementById('footer-slogan');
-  const fy = document.getElementById('footer-year');
-  if (fe) fe.textContent = cfg.email;
-  if (fp) fp.textContent = cfg.phone;
-  if (fa) fa.textContent = cfg.address;
-  if (fs) fs.textContent = cfg.sitename;
-  if (fsl) fsl.textContent = cfg.slogan;
-  if (fy) fy.textContent = cfg.year;
-
+  const fe=document.getElementById('footer-email');
+  const fp=document.getElementById('footer-phone');
+  const fa=document.getElementById('footer-address');
+  const fs=document.getElementById('footer-sitename');
+  const fsl=document.getElementById('footer-slogan');
+  const fy=document.getElementById('footer-year');
+  if (fe) fe.textContent=cfg.email;
+  if (fp) fp.textContent=cfg.phone;
+  if (fa) fa.textContent=cfg.address;
+  if (fs) fs.textContent=cfg.sitename;
+  if (fsl) fsl.textContent=cfg.slogan;
+  if (fy) fy.textContent=cfg.year;
   return cfg;
 }
 
 function renderSettings() {
   const cfg = loadSettings();
-  const fields = ['email','phone','address','sitename','slogan','year'];
-  fields.forEach(f => {
-    const el = document.getElementById('setting-' + f);
-    if (el) el.value = cfg[f] || '';
+  ['email','phone','address','sitename','slogan','year'].forEach(f => {
+    const el=document.getElementById('setting-'+f);
+    if (el) el.value=cfg[f]||'';
   });
 }
 
@@ -1359,8 +1327,16 @@ function saveSettings() {
     year:     document.getElementById('setting-year').value.trim(),
   };
   localStorage.setItem('ge_settings', JSON.stringify(s));
-  loadSettings(); // Mettre à jour le footer immédiatement
+  loadSettings();
   showNotif('Paramètres sauvegardés ✓');
+}
+
+// ===== NOTIFICATION =====
+function showNotif(msg) {
+  document.getElementById('notif-text').textContent=msg;
+  const el=document.getElementById('notif');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
 }
 
 // ===== INIT =====
